@@ -8,4 +8,4 @@ game_root = "rom"
 [entrypoint]
 file_path = "rom/default.xex"
 out_directory_path = "generated/default"
-includes = []
+includes = ["config/default.toml"]

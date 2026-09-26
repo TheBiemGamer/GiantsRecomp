@@ -1,0 +1,3 @@
+# Codegen fixes for default.xex (Skylanders Giants, Xbox 360).
+# Keys use the same schema as the manifest's [entrypoint] table.
+# Every entry needs a comment: what is at the address and how it was found.
