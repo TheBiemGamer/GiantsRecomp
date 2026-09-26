@@ -50,7 +50,7 @@ Trade-off: these hooks are tied to this exact executable, which the startup SHA-
 ## Handshake and detection
 
 - *Observed*: `sub_82403B18` is the initializer, called at the start of both wrappers. It stores three words at `0x8265BA9C`: `+0` an availability flag (1 only if both pointers resolved), `+4` the `GetRaw` function pointer, `+8` the `SetRaw` function pointer. `sub_824CF918` and `sub_8260D5A0` read the flag.
-- *Observed*: the game polls `GetRaw` every frame with a 32-byte buffer and shows "Can't find the Portal of Power. Is the wired Portal of Power plugged in to a USB connector?" until a call succeeds. Keyboard input does not dismiss the screen.
+- *Observed*: the game polls `GetRaw` every frame with a 32-byte buffer from early in boot. On the title screen, pressing A on a controller shows "Can't find the Portal of Power. Is the wired Portal of Power plugged in to a USB connector?" (the author reported this; I never pressed A myself), and it presumably clears when a call succeeds. Whether the game acts on the poll results before that point is not yet known.
 - *Not yet known*: what the first bytes of a valid report must look like for the game to accept the portal, and whether it sends an activate command through `SetRaw` before treating the portal as present. These come from the portal protocol and from a real capture (milestone 4).
 
 ## Open questions

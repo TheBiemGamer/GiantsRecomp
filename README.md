@@ -1,6 +1,6 @@
 # GiantRecomp
 
-An unofficial PC port of the Xbox 360 version of Skylanders Giants, made by static recompilation with the [ReXGlue SDK](https://github.com/rexglue/rexglue-sdk). Work in progress: the recompiled game runs and renders, but it stops on its own "Can't find the Portal of Power" screen because portal support is not written yet.
+An unofficial PC port of the Xbox 360 version of Skylanders Giants, made by static recompilation with the [ReXGlue SDK](https://github.com/rexglue/rexglue-sdk). Work in progress: the recompiled game runs, renders and reaches its title screen, but pressing A to start shows "Can't find the Portal of Power" because portal support is not written yet.
 
 This repository contains no game code or assets. You need your own copy of the game.
 

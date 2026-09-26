@@ -108,7 +108,7 @@ The choice is made in milestone 3 by inspecting imports in the generated code an
   - `portal_mode`: `none`, `software` or `usb`. Default `none`.
   - `portal_usb_device`: optional VID/PID choice when several are attached.
   - `portal_figures_dir`: where figure files live and are saved.
-- `portal_mode = none` is a valid state: the game runs with no portal attached and shows its "Can't find the Portal of Power" screen, so the recompile milestone does not depend on portal work.
+- `portal_mode = none` is a valid state: the game runs with no portal attached, reaches its title screen, and shows "Can't find the Portal of Power" when the player presses A to start, so the recompile milestone does not depend on portal work.
 
 ### 4.5 Overlay
 
@@ -120,7 +120,7 @@ The choice is made in milestone 3 by inspecting imports in the generated code an
 ## 5. Milestones
 
 1. **Toolchain.** Done: ReXGlue SDK builds and installs.
-2. **Recompile and boot.** Run `rexglue codegen` on `default.xex`, fix `config/default.toml` (function boundaries, switch tables, setjmp/longjmp), and stub then implement kernel imports until the game runs and renders. With no portal attached, the game stops on its own "Can't find the Portal of Power" screen and does not reach the title screen; that screen is the milestone-2 finish line (recompiled code, graphics, audio and file access all working). The title screen becomes reachable in milestone 4, when a portal exists. Record the XEX SHA-256 and add the startup check.
+2. **Recompile and boot.** Run `rexglue codegen` on `default.xex`, fix `config/default.toml` (function boundaries, switch tables, setjmp/longjmp), and stub then implement kernel imports until the game runs and renders. The game reaches its title screen ("Press A to start"), which is the milestone-2 finish line (recompiled code, graphics, audio and file access all working). With no portal attached, pressing A shows "Can't find the Portal of Power"; getting past that check is milestone 4. Record the XEX SHA-256 and add the startup check.
 3. **Find the portal API.** Determine how the game reaches the portal (imports, report formats, any enumeration handshake). Decide the hook level (4.3). Main reference: Cemu's Xbox 360 Skylander code.
 4. **Minimal SoftwarePortal.** The game detects a portal, then one hard-coded figure.
 5. **Figure library.** Dump import, new-figure creation, `FigureCodec`, `FigureStore`, per-figure saves.
@@ -143,7 +143,7 @@ Each milestone ends with something runnable. Milestones 2 and 3 carry the real u
 
 - **Recompile difficulty.** Unresolved functions, jump tables and missing kernel imports are expected. ReXGlue's graphics, audio and input backends are marked as in flux, so some early failures may be SDK issues.
 - **Title update.** Whether Giants needs a patched executable, and how ReXGlue handles a separate patch file, is unknown. To check in milestone 2 (ReXGlue Discord).
-- **Portal API and handshake.** The game polls `XamInputNonControllerGetRaw` (about 350 calls in 20 seconds) and blocks on a "Can't find the Portal of Power" screen until a portal answers; this is the likely hook point (see `docs/investigation/portal-api.md` once milestone 3 is done). If the game only recognizes the portal after a specific USB enumeration handshake, `SoftwarePortal` must reproduce it. Found in milestone 3.
+- **Portal API and handshake.** The game polls `XamInputNonControllerGetRaw` (about 350 calls in 20 seconds) and shows a "Can't find the Portal of Power" screen when the player presses A at the title screen until a portal answers; this is the likely hook point (see `docs/investigation/portal-api.md` once milestone 3 is done). If the game only recognizes the portal after a specific USB enumeration handshake, `SoftwarePortal` must reproduce it. Found in milestone 3.
 - **Xbox 360 portal access on Windows.** Needs a driver swap and libusb or WinUSB, not yet in the build.
 - **Traptanium compatibility.** Assumed backwards compatible with Giants figures and protocol; verified in milestone 7.
 - **Licensing.** Section 3 decision needs author confirmation.

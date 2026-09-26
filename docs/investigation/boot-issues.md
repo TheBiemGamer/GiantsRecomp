@@ -4,7 +4,7 @@ Findings from getting `default.xex` (Title ID 415608DA, version 0.0.0.2, no titl
 
 ## Result
 
-The recompiled game runs for minutes without crashing, renders through the Xenos GPU plugin, plays audio, reads game files, and stops on its own "Can't find the Portal of Power" screen. It cannot reach the title screen without a portal (milestone 4).
+The recompiled game runs for minutes without crashing, renders through the Xenos GPU plugin, plays audio, reads game files, and reaches its title screen ("Press A to start"). Pressing A with no portal attached shows "Can't find the Portal of Power", so getting into the game needs the portal work in milestone 4.
 
 ## SDK behaviour that needed workarounds
 
@@ -31,7 +31,7 @@ Without `rexglue_setup_target(... GPU_PLUGINS xenos)` and `gpu_plugin = "xenos"`
 ## Portal observations (input for milestone 3)
 
 - The game calls `XamInputNonControllerGetRaw` continuously. ReXGlue logs it as `STUB`. This is the leading candidate for how the game reads the portal.
-- The game shows "Can't find the Portal of Power. Is the wired Portal of Power plugged in to a USB connector?" and does not respond to keyboard input while no portal answers.
+- On the title screen, pressing A on a controller with no portal attached shows "Can't find the Portal of Power. Is the wired Portal of Power plugged in to a USB connector?" (reported by the author, who pressed A on their controller). Keyboard keys sent by my automated runs did not advance the title screen, so keyboard input is probably not mapped; I did not test a controller myself.
 
 ## Tooling used (not committed)
 
