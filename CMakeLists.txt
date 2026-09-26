@@ -10,6 +10,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(generated/rexglue.cmake)
 
+# Recompiled code is generated from the user's own default.xex and is not in the repository.
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/generated/default/sources.cmake")
+    message(WARNING
+        "No recompiled code yet (generated/default/sources.cmake is missing).\n"
+        "  1. Put your extracted game disc in rom/ (rom/default.xex must exist).\n"
+        "  2. Run:  cmake --build --preset <preset> --target giantrecomp_codegen\n"
+        "  3. Re-run:  cmake --preset <preset>\n"
+        "  4. Build:  cmake --build --preset <preset>\n"
+        "See README.md.")
+endif()
+
 # Sources
 set(GIANTRECOMP_SOURCES
     src/main.cpp
