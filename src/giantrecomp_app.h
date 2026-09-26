@@ -46,28 +46,22 @@ class GiantrecompApp : public rex::ReXApp {
     // ReXApp reports a missing --game_data_root itself when it builds the runtime.
     if (game_data_root_.empty()) return;
     const auto xex = game_data_root_ / "default.xex";
-    REXLOG_INFO("Checking {} against the pinned SHA-256", xex.string());
+    // Utf8() and wide messages, not path::string(): that throws for characters outside the ANSI
+    // code page, and this runs on every startup.
+    REXLOG_INFO("Checking {} against the pinned SHA-256", giantrecomp::Utf8(xex));
     const auto result = giantrecomp::VerifyXex(xex, GIANTRECOMP_XEX_SHA256);
-    switch (result.status) {
-      case giantrecomp::XexCheck::Match:
-        REXLOG_INFO("default.xex verified");
-        return;
-      case giantrecomp::XexCheck::Unreadable:
-        Fatal("Cannot read " + xex.string() +
-              "\nPut your extracted Skylanders Giants disc contents in the game folder "
-              "(default.xex must be at its top level).");
-      case giantrecomp::XexCheck::Mismatch:
-        Fatal("default.xex is not the supported build.\nExpected SHA-256: " +
-              std::string(GIANTRECOMP_XEX_SHA256) + "\nFound SHA-256:    " + result.actual_sha256);
-      case giantrecomp::XexCheck::BadExpected:
-        Fatal("Internal error: the pinned SHA-256 is malformed.");
+    const auto problem = giantrecomp::DescribeXexProblem(xex, result, GIANTRECOMP_XEX_SHA256);
+    if (problem.empty()) {
+      REXLOG_INFO("default.xex verified");
+      return;
     }
+    Fatal(problem);
   }
 
  private:
-  [[noreturn]] static void Fatal(const std::string& message) {
-    REXLOG_ERROR("{}", message);
-    MessageBoxA(nullptr, message.c_str(), "GiantRecomp", MB_OK | MB_ICONERROR);
+  [[noreturn]] static void Fatal(const std::wstring& message) {
+    REXLOG_ERROR("{}", giantrecomp::Utf8(std::filesystem::path(message)));
+    MessageBoxW(nullptr, message.c_str(), L"GiantRecomp", MB_OK | MB_ICONERROR);
     std::exit(2);
   }
 

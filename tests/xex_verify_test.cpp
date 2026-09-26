@@ -69,6 +69,33 @@ int main() {
   CHECK(VerifyXex(abc, "").status == XexCheck::BadExpected);
   CHECK(VerifyXex(abc, std::string(64, 'g')).status == XexCheck::BadExpected);
 
+
+  // Wide-only characters (not in the ANSI code page): must not throw and must survive the round trip.
+  {
+    fs::path wide = fs::temp_directory_path() / L"gr 日本 dir";
+    fs::create_directories(wide);
+    {
+      std::ofstream(wide / L"default.xex", std::ios::binary) << "abc";
+    }
+    CHECK(giantrecomp::Sha256File(wide / L"default.xex") == std::string(kAbc));
+    CHECK(giantrecomp::Utf8(fs::path(L"日")) == std::string("\xE6\x97\xA5"));
+
+    auto unreadable = VerifyXex(wide / L"missing.xex", kAbc);
+    std::wstring msg = giantrecomp::DescribeXexProblem(wide / L"missing.xex", unreadable, kAbc);
+    CHECK(msg.find((wide / L"missing.xex").wstring()) != std::wstring::npos);
+    CHECK(msg.find(L"Cannot read") != std::wstring::npos);
+  }
+
+  // DescribeXexProblem: empty for a match; both hashes for a mismatch; a message for a bad pin.
+  {
+    fs::path f = WriteTemp("gr_desc.bin", "abc");
+    CHECK(giantrecomp::DescribeXexProblem(f, VerifyXex(f, kAbc), kAbc).empty());
+    std::wstring mm = giantrecomp::DescribeXexProblem(f, VerifyXex(f, kEmpty), kEmpty);
+    CHECK(mm.find(std::wstring(kEmpty, kEmpty + 64)) != std::wstring::npos);
+    CHECK(mm.find(std::wstring(kAbc, kAbc + 64)) != std::wstring::npos);
+    CHECK(!giantrecomp::DescribeXexProblem(f, VerifyXex(f, "xyz"), "xyz").empty());
+  }
+
   if (g_failures == 0) std::puts("all xex_verify tests passed");
   return g_failures == 0 ? 0 : 1;
 }

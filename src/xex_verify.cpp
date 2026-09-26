@@ -82,4 +82,29 @@ XexCheckResult VerifyXex(const std::filesystem::path& xex, std::string_view expe
   return {*actual == *expected ? XexCheck::Match : XexCheck::Mismatch, *actual};
 }
 
+std::string Utf8(const std::filesystem::path& p) {
+  const auto u = p.u8string();
+  return std::string(reinterpret_cast<const char*>(u.data()), u.size());
+}
+
+std::wstring DescribeXexProblem(const std::filesystem::path& xex, const XexCheckResult& result,
+                                std::string_view expected_sha256) {
+  switch (result.status) {
+    case XexCheck::Match:
+      return {};
+    case XexCheck::Unreadable:
+      return L"Cannot read " + xex.wstring() +
+             L"\nPut your extracted Skylanders Giants disc contents in the game folder "
+             L"(default.xex must be at its top level).";
+    case XexCheck::Mismatch:
+      return L"default.xex is not the supported build.\nExpected SHA-256: " +
+             std::wstring(expected_sha256.begin(), expected_sha256.end()) +
+             L"\nFound SHA-256:    " +
+             std::wstring(result.actual_sha256.begin(), result.actual_sha256.end());
+    case XexCheck::BadExpected:
+      break;
+  }
+  return L"Internal error: the pinned SHA-256 is malformed.";
+}
+
 }  // namespace giantrecomp
