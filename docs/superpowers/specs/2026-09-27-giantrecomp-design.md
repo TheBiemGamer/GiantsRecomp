@@ -29,7 +29,7 @@ The project follows the shape of [DimensionsRecomp](https://github.com/NeverCook
 - Source binary: `rom/default.xex`, extracted from the author's own disc. `rom/` is git-ignored, except its README.
 - Toolchain: ReXGlue SDK (installed locally), Visual Studio 2022 with clang 19+, CMake 3.25+, Ninja, x64 developer environment.
 - The SHA-256 of `default.xex` is recorded in the repository docs and checked at startup. Hooks that reference game function addresses only fit one build, so a mismatch is refused.
-- Recompiled output (`generated/`) is derived from the game's code and is git-ignored. Users generate it locally.
+- Recompiled output (`generated/`) is derived from the game's code and is git-ignored. Users generate it locally. Codegen output goes to `generated/default/`.
 - Figure dumps and any game data are never committed.
 
 ## 3. Licensing approach
@@ -45,8 +45,9 @@ Decision (recommended, pending author confirmation): read them to learn protocol
 ```
 GiantRecomp/
   rom/                      user's dump, git-ignored
-  giantrecomp_config.toml   ReXGlue project config
-  generated/                codegen output, git-ignored
+  giantrecomp_manifest.toml ReXGlue project manifest
+  config/default.toml       codegen fixes for default.xex (included by the manifest)
+  generated/                codegen output, git-ignored (rexglue.cmake is tracked)
   src/
     game/                   game-specific recompile fixes (overrides, mid-asm hooks)
     hooks/                  guest-facing hooks binding the game to a PortalDevice
@@ -119,7 +120,7 @@ The choice is made in milestone 3 by inspecting imports in the generated code an
 ## 5. Milestones
 
 1. **Toolchain.** Done: ReXGlue SDK builds and installs.
-2. **Recompile and boot.** Run `rexglue codegen` on `default.xex`, fix `giantrecomp_config.toml` (function boundaries, jump tables), stub then implement kernel imports until the game reaches the title screen with no portal. Record the XEX SHA-256 and add the startup check.
+2. **Recompile and boot.** Run `rexglue codegen` on `default.xex`, fix `config/default.toml` (function boundaries, switch tables, setjmp/longjmp), stub then implement kernel imports until the game reaches the title screen with no portal. Record the XEX SHA-256 and add the startup check.
 3. **Find the portal API.** Determine how the game reaches the portal (imports, report formats, any enumeration handshake). Decide the hook level (4.3). Main reference: Cemu's Xbox 360 Skylander code.
 4. **Minimal SoftwarePortal.** The game detects a portal, then one hard-coded figure.
 5. **Figure library.** Dump import, new-figure creation, `FigureCodec`, `FigureStore`, per-figure saves.

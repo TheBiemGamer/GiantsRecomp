@@ -1,2 +1,6 @@
 /rom/*
 !/rom/README.md
+/generated/*
+!/generated/rexglue.cmake
+/out/
+/logs/
