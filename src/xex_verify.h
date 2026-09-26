@@ -1,0 +1,29 @@
+#pragma once
+
+#include <filesystem>
+#include <optional>
+#include <string>
+#include <string_view>
+
+namespace giantrecomp {
+
+enum class XexCheck {
+  Match,        // file hashes to the expected value
+  Mismatch,     // file readable but hash differs (includes empty and truncated files)
+  Unreadable,   // file missing, a directory, or a read error
+  BadExpected,  // expected hash is not 64 hex characters
+};
+
+struct XexCheckResult {
+  XexCheck status;
+  std::string actual_sha256;  // empty unless the file was readable
+};
+
+// Lowercase hex SHA-256 of the file at `path`, or nullopt if it cannot be read completely.
+std::optional<std::string> Sha256File(const std::filesystem::path& path);
+
+// Compares the file's SHA-256 with `expected_sha256` (64 hex chars, any case, surrounding
+// whitespace ignored).
+XexCheckResult VerifyXex(const std::filesystem::path& xex, std::string_view expected_sha256);
+
+}  // namespace giantrecomp
