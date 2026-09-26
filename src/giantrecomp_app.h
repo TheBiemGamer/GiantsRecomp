@@ -26,7 +26,6 @@ class GiantrecompApp : public rex::ReXApp {
   }
 
   // Override virtual hooks for customization:
-  // void OnPreSetup(rex::RuntimeConfig& config) override {}
   // void OnLoadXexImage(std::string& xex_image) override {}
   // void OnPostLoadXexImage() override {}
   // void OnPostSetup() override {}
@@ -36,9 +35,16 @@ class GiantrecompApp : public rex::ReXApp {
   // CreateAchievementNotificationDialog() override;
   // void OnShutdown() override {}
 
+  void OnPreSetup(rex::RuntimeConfig& config) override {
+    // The Xenos GPU plugin renders the Xbox 360 command stream; without it nothing is drawn.
+    if (config.gpu_plugin.empty()) config.gpu_plugin = "xenos";
+  }
+
   void OnConfigurePaths(rex::PathConfig& paths) override { game_data_root_ = paths.game_data_root; }
 
   void OnPostInitLogging() override {
+    // ReXApp reports a missing --game_data_root itself when it builds the runtime.
+    if (game_data_root_.empty()) return;
     const auto xex = game_data_root_ / "default.xex";
     REXLOG_INFO("Checking {} against the pinned SHA-256", xex.string());
     const auto result = giantrecomp::VerifyXex(xex, GIANTRECOMP_XEX_SHA256);

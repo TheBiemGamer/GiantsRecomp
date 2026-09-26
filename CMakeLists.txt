@@ -13,6 +13,7 @@ include(generated/rexglue.cmake)
 # Sources
 set(GIANTRECOMP_SOURCES
     src/main.cpp
+    src/game/kernel_stubs.cpp
 )
 
 if(WIN32)
@@ -21,7 +22,7 @@ else()
     add_executable(giantrecomp ${GIANTRECOMP_SOURCES})
 endif()
 
-rexglue_setup_target(giantrecomp)
+rexglue_setup_target(giantrecomp GPU_PLUGINS xenos)
 
 # --- Pinned game executable -------------------------------------------------
 set(GIANTRECOMP_XEX_HASH_FILE "${CMAKE_CURRENT_SOURCE_DIR}/docs/game/default.xex.sha256")
