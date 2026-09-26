@@ -8,6 +8,13 @@ project(giantrecomp LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Build the SDK from the pinned submodule when present; otherwise generated/rexglue.cmake falls back
+# to an installed SDK found through find_package. Pass -DREXSDK_DIR=<path> to use another checkout.
+if(NOT REXSDK_DIR AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/rexglue-sdk/CMakeLists.txt")
+    set(REXSDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/rexglue-sdk" CACHE PATH
+        "Path to the rexglue-sdk source tree" FORCE)
+endif()
+
 include(generated/rexglue.cmake)
 
 # Recompiled code is generated from the user's own default.xex and is not in the repository.
@@ -34,6 +41,11 @@ else()
 endif()
 
 rexglue_setup_target(giantrecomp GPU_PLUGINS xenos)
+
+if(REXSDK_DIR)
+    # An installed SDK ships imgui's headers next to its own; an in-tree build must point at them.
+    target_include_directories(giantrecomp PRIVATE "${REXSDK_DIR}/thirdparty/imgui")
+endif()
 
 # --- Pinned game executable -------------------------------------------------
 set(GIANTRECOMP_XEX_HASH_FILE "${CMAKE_CURRENT_SOURCE_DIR}/docs/game/default.xex.sha256")
