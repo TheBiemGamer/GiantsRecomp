@@ -1,6 +1,4 @@
 # Copy this file next to giantrecomp.exe and rename it to "giantsrecomp.toml" to configure the
-# game without command-line flags every time. Only include the settings you want to change --
-# anything left out keeps its default. Command-line flags still override whatever this file sets.
 # The in-game Settings overlay (F4) reads and writes this same file.
 
 # Works around a GPU quirk that can otherwise make parts of the scene, or the whole screen, render

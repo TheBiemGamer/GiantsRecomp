@@ -6,8 +6,10 @@
 
 #include <windows.h>
 
+#include <chrono>
 #include <cstdlib>
 #include <filesystem>
+#include <optional>
 #include <string>
 
 #include <rex/logging.h>
@@ -43,6 +45,10 @@ class GiantrecompApp : public rex::ReXApp {
 
   void OnPostSetup() override {
     giantrecomp::InstallConfiguredPortal(user_data_root() / "figures");
+    // The F3 debug overlay's FPS line only shows once something calls this; nothing did, so it
+    // silently stayed blank. Timed between successive calls (the overlay only calls this while
+    // visible, once per rendered frame) rather than hooking a game-specific present function.
+    SetGuestFrameStats([this] { return ComputeFrameStats(); });
   }
 
   void OnConfigureFonts(ImFontAtlas* atlas) override {
@@ -114,6 +120,39 @@ class GiantrecompApp : public rex::ReXApp {
     std::exit(2);
   }
 
+  // Averaged over kFpsRefreshInterval rather than a raw frame-to-frame delta: at 60-240Hz a raw
+  // instantaneous value changes every single call and is unreadable.
+  static constexpr double kFpsRefreshIntervalSeconds = 0.5;
+
+  rex::ui::FrameStats ComputeFrameStats() {
+    const auto now = std::chrono::steady_clock::now();
+    ++frame_stats_count_;
+    if (last_frame_stats_time_) {
+      fps_window_frames_++;
+      fps_window_elapsed_seconds_ +=
+          std::chrono::duration<double>(now - *last_frame_stats_time_).count();
+      if (fps_window_elapsed_seconds_ >= kFpsRefreshIntervalSeconds) {
+        cached_fps_ = fps_window_frames_ / fps_window_elapsed_seconds_;
+        cached_frame_time_ms_ = (fps_window_elapsed_seconds_ / fps_window_frames_) * 1000.0;
+        fps_window_frames_ = 0;
+        fps_window_elapsed_seconds_ = 0.0;
+      }
+    }
+    last_frame_stats_time_ = now;
+
+    rex::ui::FrameStats stats;
+    stats.fps = cached_fps_;
+    stats.frame_time_ms = cached_frame_time_ms_;
+    stats.frame_count = frame_stats_count_;
+    return stats;
+  }
+
   std::filesystem::path game_data_root_;
   std::unique_ptr<giantrecomp::PortalOverlayDialog> portal_overlay_;
+  std::optional<std::chrono::steady_clock::time_point> last_frame_stats_time_;
+  uint64_t frame_stats_count_ = 0;
+  int fps_window_frames_ = 0;
+  double fps_window_elapsed_seconds_ = 0.0;
+  double cached_fps_ = 0.0;
+  double cached_frame_time_ms_ = 0.0;
 };
