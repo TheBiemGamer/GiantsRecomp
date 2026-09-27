@@ -1,10 +1,12 @@
 # GiantRecomp
 
-**Skylanders: Giants on PC.** This is an unofficial port of the Xbox 360 version of the game. It converts the game's own code so that it runs natively on Windows (this is called *static recompilation*). It comes with a **virtual Portal of Power**, so you can play without the real toy hardware. Support for real portals is planned.
-
-> **Status: early, but playable.** The author has played the whole first chapter and started the second. Expect rough edges. See [What works](#what-works-and-what-doesnt) below.
+An unofficial PC port of the Xbox 360 version of Skylanders Giants, made by static recompilation with the [ReXGlue SDK](https://github.com/rexglue/rexglue-sdk). It comes with a **virtual Portal of Power**, so you can play without the real toy hardware. Support for real portals is planned.
 
 This repository contains **no game code and no game data**. You need your own copy of the game.
+
+## About this project
+
+This is a solo, for-fun project to see whether a static recompilation of Skylanders Giants was possible. It's early but playable — see [What works](#what-works-and-what-doesnt) below for where it stands. It isn't meant to compete with playing the game on Cemu, and realistically it may never surpass that experience; the point was the challenge, not replacing an existing emulator.
 
 ## What works, and what doesn't
 
