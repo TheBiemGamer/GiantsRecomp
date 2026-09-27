@@ -76,6 +76,7 @@ out\build\win-amd64-release\giantrecomp.exe --game_data_root rom --portal_figure
 - `--gpu_allow_invalid_fetch_constants` works around a GPU quirk that can otherwise make parts of the scene, or the whole screen, render blank. Recommended until the underlying cause is fixed (see `docs/investigation/boot-issues.md`).
 - `--portal_mode software` (the default) uses the virtual portal. `--portal_mode none` uses no portal, and the game then says it can't find one.
 - `--portal_test_figure` puts an all-zero test figure on the portal. The game reports it as a problem toy.
+- `--portal_figures_dir <folder>` turns on the **in-game figure picker**: press **F6** to open it (mouse only for now), filter by name, and click **Place** or **Remove**. Any figure placed this way saves its progress back to its file too.
 
 **Tip:** to avoid typing this, save the command in a text file named `play.cmd` (start it with `cd /d` and the project folder) and double-click it.
 

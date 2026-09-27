@@ -113,10 +113,12 @@ The choice is made in milestone 3 by inspecting imports in the generated code an
 
 ### 4.5 Overlay
 
-- Shows 16 slots. Each slot can load a figure file, create a new figure from `FigureCatalog`, or remove one.
-- Navigable with gamepad and mouse.
-- Talks only to `SoftwarePortal`'s control API, never to protocol bytes. With a real USB portal active, it shows portal status and disables figure controls.
-- Threading: the overlay runs on the UI thread and the game reads on its own thread. Slot state is mutex-guarded, and figure changes are queued as state transitions so the game sees a clean placement.
+**Built (milestone 6), with one deliberate reduction from the original design below:** `PortalOverlayDialog`, a `rex::ui::ImGuiDialog` registered in `OnCreateDialogs(ImGuiDrawer*)`, opened with **F6** (checked against F3 Debug, F4 Settings, F7 Achievements and Backtick Console — no collision). It lists every `.dump` file found under the `portal_figures_dir` cvar (`FigureCatalog`, grouped by top-level folder, sorted by name), with a text filter, and **Place**/**Remove** buttons that call `PlaceFigureFromFile`/`RemoveFigureFromSlot` on slot 0 only. Talks only to `SoftwarePortal`'s control API, never to protocol bytes.
+
+- **Mouse only, not gamepad-navigable.** The SDK's ImGui integration does not wire up gamepad navigation (`ImGuiConfigFlags_NavEnableGamepad` is not set anywhere in it), so building controller navigation would mean writing it from scratch. Deferred: a PC always has a mouse, even for a controller-only game, so this is a usable v1 rather than a blocker. Revisit if it proves annoying in practice.
+- **One slot, not sixteen.** v1 only manages slot 0, matching the CLI (`--portal_figure`) it replaces. `SoftwarePortal` already supports all 16 slots; the overlay UI for choosing a slot is future work once multi-figure play (for example co-op) is actually needed.
+- **No figure creation.** The overlay only loads existing `.dump` files; it does not build a fresh figure from an ID (that needs the tag crypto, still not implemented — see milestone 5's open items).
+- Real USB portal support (milestone 7) is not built yet, so the "disable controls with a real portal active" behavior does not apply yet.
 
 ## 5. Milestones
 
