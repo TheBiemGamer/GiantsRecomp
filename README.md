@@ -1,6 +1,6 @@
 # Giants Recompiled
 
-An unofficial PC port of the Xbox 360 version of Skylanders Giants, made by static recompilation with [ReXGlue](https://github.com/rexglue/rexglue-sdk). It comes with a **virtual Portal of Power**, so you can play without the real toy hardware. Support for real portals is planned.
+An unofficial PC port of the Xbox 360 version of Skylanders Giants, made by static recompilation with [ReXGlue](https://github.com/rexglue/rexglue-sdk). It comes with a **virtual Portal of Power**, so you can play without the real toy hardware — or plug in a real one, since that's supported too.
 
 This repository contains **no game code and no game data**. You need your own copy of the game.
 
@@ -12,26 +12,30 @@ This is a solo, for-fun project to see whether a static recompilation of Skyland
 
 **Works today**
 - The game starts, renders, plays sound, and plays through Story mode with a controller.
-- A virtual Portal of Power with one of your own figures on it. Progress on that figure (levelling up, upgrades) is saved back to its `.dump` file, so it carries over between play sessions.
+- A virtual Portal of Power with your own figures on it, up to 16 at once (matching the real portal's slots). A menu (**F6**) lets you browse your `.dump` files and place or remove a figure in any slot at any time — no need to restart to swap figures. Progress on a figure (levelling up, upgrades) is saved back to its `.dump` file, so it carries over between play sessions.
 - A real, physical Portal of Power over USB (`portal_mode = "usb"`) — tested with a Wii U Traptanium portal, including figure recognition (confirmed with a real Skylander). No driver changes needed; it just needs to be plugged in. The figure picker overlay (**F6**) shows every detected figure's name when a USB portal is active. The Xbox 360 Traptanium portal is also whitelisted but untested — no such hardware to verify against yet.
 
 **Not yet**
-- Only one figure at a time, chosen before you start. A menu to swap figures while playing is planned.
 - It can be slow, especially in the everyday (Debug) build (see [Playing](#playing) for the faster Release build). Expect stutter the first time an effect appears in a scene; it should be smoother the second time. Cutscenes are the heaviest part and lag the most.
 - Keyboard and mouse. Use a controller.
-- Modes other than Story have not been tested. Linux and macOS are not supported.
+- Modes other than Story have not been tested.
+- **Linux builds and runs** (see [Setup](#setup)), but it's newer and rougher than the Windows build: it's noticeably slower than Windows even on the same hardware, and there's an unresolved rendering bug where the screen renders with an incorrect red tint from the title screen onward. On a laptop with both an integrated and a discrete GPU, also check the `vulkan_device` tip in [Settings file](#settings-file) — the automatic GPU pick has no preference for the discrete GPU and can end up on the weaker one. macOS has build presets but hasn't been tried by anyone.
 
 ## What you need
 
-1. **A Windows 10 or 11 PC (64-bit)** with a graphics card that supports DirectX 12.
+1. **A 64-bit PC.** Windows 10 or 11 with a graphics card that supports DirectX 12 is the main target. Linux works too (see [Setup](#setup)) with a Vulkan 1.x capable GPU, but is newer and rougher — see the Linux note under [What works, and what doesn't](#what-works-and-what-doesnt).
 2. **Your own copy of the game:** the Xbox 360 disc of Skylanders: Giants, **version 1.0 (the USA and Europe release)**, extracted to a folder on your PC (for example with a disc-extraction tool such as `extract-xiso` or `xdvdfs`). The program checks the game file against a fingerprint at startup and refuses to run any other version.
 3. **A controller.** An Xbox controller works.
 4. **Figure dumps (optional but recommended):** raw 1024-byte `.dump` files of your own figures, made with a real portal and a dumping tool. They are not included here.
-5. **Build tools** (see step 3 of the setup below): Visual Studio 2022 with the C++ tools, CMake, Ninja and Git.
+5. **Build tools** (see the setup below): on Windows, Visual Studio 2022 with the C++ tools, CMake, Ninja and Git. On Linux, clang 20+, CMake, Ninja and Git. [`just`](https://github.com/casey/just) is optional on either platform but simplifies the commands below a lot.
 
 ## Setup
 
-**1. Turn on symlinks (Windows only, once).** One of the libraries uses a Windows feature called symbolic links. Turn on **Developer Mode** (Settings, System, For developers), then run:
+A [`justfile`](justfile) wraps every command below (`just build-debug`, `just build-release`, `just play-debug`, `just play-release`, ...; run `just` with no arguments to list them all) and picks the right preset for your OS automatically. It's optional — the plain `cmake`/`ctest` commands below always work too — but shortens most of this section to one command.
+
+### Windows
+
+**1. Turn on symlinks (once).** One of the libraries uses a Windows feature called symbolic links. Turn on **Developer Mode** (Settings, System, For developers), then run:
 
 ```
 git config --global core.symlinks true
@@ -63,13 +67,48 @@ The second command converts *your* `default.xex` into C++ code on your own machi
 
 **Optional, but recommended for actually playing:** repeat the same four steps with `win-amd64-release` instead of `win-amd64-debug`. The Release build is optimized and noticeably smoother; use Debug only if something crashes and you want to capture more detail for a bug report.
 
+### Linux
+
+Newer and rougher than Windows — see the Linux note under [What works, and what doesn't](#what-works-and-what-doesnt) before investing time here.
+
+**1. Install the build tools.** You need clang 20 or newer (both `clang-20` and `clang++-20` on `PATH`), CMake 3.25 or newer, Ninja and Git — e.g. on Arch, `sudo pacman -S clang20 cmake ninja git`. Some distros' packages don't add the versioned `clang-20`/`clang++-20` names to `PATH` even though they install the binaries (Arch's `clang20` package is one; check where it put `clang++` and symlink `clang-20`/`clang++-20` onto it somewhere on `PATH`, such as `~/.local/bin`, if `which clang-20` comes up empty).
+
+**2. Download the code, including its libraries:**
+
+```
+git clone --recursive https://github.com/TheBiemGamer/GiantsRecomp.git
+cd GiantsRecomp
+```
+
+If you already cloned without `--recursive`, run `git submodule update --init --recursive`.
+
+**3. Put your game files in place.** Copy the extracted disc into the `rom` folder so that `rom/default.xex` exists. That folder is ignored by git.
+
+**4. Build.** The first build takes a long time because it also builds the ReXGlue SDK.
+
+```
+cmake --preset linux-amd64-debug
+cmake --build --preset linux-amd64-debug --target giantrecomp_codegen
+cmake --preset linux-amd64-debug
+cmake --build --preset linux-amd64-debug
+```
+
+The second command converts *your* `default.xex` into C++ code on your own machine. That generated code is never uploaded. The third command is needed so the build notices it.
+
+**Optional, but recommended for actually playing:** repeat the same four steps with `linux-amd64-release` instead of `linux-amd64-debug`. The Release build is optimized and noticeably smoother; use Debug only if something crashes and you want to capture more detail for a bug report.
+
+With `just` installed, all of the above (both platforms) is just `just build-debug` or `just build-release`.
+
 ## Playing
 
-Run the game from the project folder (`out\build\win-amd64-release` if you built Release, `win-amd64-debug` otherwise):
+Run the game from the project folder (`out\build\win-amd64-release` if you built Release, `win-amd64-debug` otherwise; `out/build/linux-amd64-release` etc. on Linux, no `.exe`):
 
 ```
-out\build\win-amd64-release\giantrecomp.exe
+out\build\win-amd64-release\giantrecomp.exe   # Windows
+out/build/linux-amd64-release/giantrecomp     # Linux
 ```
+
+Or, with `just`: `just play-release` (or `just play-debug`) — builds first if needed, then runs it.
 
 That's it if `rom\default.xex` exists — no flags needed for the common case. Press **A** at the title screen, then choose **Story** and a slot marked **NEW**. To quit, close the window.
 
@@ -85,6 +124,8 @@ Copy [`giantsrecomp.toml.example`](giantsrecomp.toml.example) next to `giantreco
 - `frame_rate_limit`: caps the host frame rate to this many FPS. `0` (the default) is unlimited.
 - `resolution_scale`: supersamples the internal render resolution by this factor (`1`-`8`) before downscaling to your window/monitor — sharper, at a real GPU cost. `1` (the default) is no scaling.
 - `resolution`: sets the startup window size, e.g. `"3440x1440"` for an ultrawide monitor or `"4k"`. The window and internal render resolution use this size in full. Giants itself only ever ran at 16:9 or 4:3 on real Xbox 360 hardware, so anything else is pillarboxed/letterboxed to the nearest of those (matching real console output) rather than stretched — full ultrawide/wide-FOV gameplay is planned but not implemented yet.
+- `ui_scale`: scales the ImGui overlays (**F3**/**F4**/**F6**/**F7**, console) font size and widget sizing. `1.0` (the default) is unchanged; try `1.5` or higher if the overlay text looks too small on a large or high-resolution monitor.
+- `vulkan_device`: picks which GPU renders the game by index, for a PC with more than one (e.g. a laptop with both an integrated and a discrete GPU). `-1` (the default) auto-selects, but the auto-pick has no preference for the discrete GPU — if performance is much worse than expected, run the game once, check the log for "Available Vulkan physical devices" and the index list it prints, and set this to the discrete one's index.
 
 Any setting can still be passed as a command-line flag instead (`--portal_mode software`), which overrides whatever the settings file has. One exception: `--game_data_root` (where `rom\` lives) can't be set from the settings file — it's read before the file loads — but it already defaults to `rom` next to the executable, so you only need the flag if your dump lives somewhere else.
 
@@ -98,8 +139,9 @@ Any setting can still be passed as a command-line flag instead (`--portal_mode s
 | "default.xex is not the supported build" | Your disc is a different version. Only version 1.0 (USA and Europe) works. |
 | "Can't find the Portal of Power" | No portal is active. Don't use `--portal_mode none`. |
 | "A toy on the Portal of Power has a problem" | The figure file is not a valid dump, or you used `--portal_test_figure`. |
-| The build stops with an "undefined symbol" error | The build didn't pick up the generated code. Run the third build command again (the second `cmake --preset win-amd64-debug`), then the last one. |
-| A file error about `lzxd.c` during the build | Symlinks were off when you cloned. Do step 1, then re-clone or run `git submodule update --init --recursive`. |
+| The build stops with an "undefined symbol" error | The build didn't pick up the generated code. Run the `cmake --preset ...` reconfigure step again, then the build step. |
+| A file error about `lzxd.c` during the build (Windows only) | Symlinks were off when you cloned. Do step 1, then re-clone or run `git submodule update --init --recursive`. |
+| (Linux) `clang-20: command not found` when configuring | `clang-20`/`clang++-20` aren't on `PATH` — see the Linux setup step 1 note about distros that install them unversioned. |
 | The game closes suddenly | This is an early build. Please note which screen you were on and open an issue. |
 
 ## For developers
@@ -108,7 +150,7 @@ Any setting can still be passed as a command-line flag instead (`--portal_mode s
 - `src/portal/` is the portal emulation (no dependency on the SDK, with unit tests in `tests/`). `src/hooks/` connects it to the game. `src/game/` holds other game-specific code.
 - `thirdparty/rexglue-sdk` is the ReXGlue SDK, included as a git submodule.
 - `docs/` has the design (`docs/superpowers/specs/`), the implementation plans, and notes on how the game and portal behave (`docs/investigation/`).
-- Run the unit tests with `ctest --test-dir out/build/win-amd64-debug`.
+- Run the unit tests with `ctest --test-dir out/build/win-amd64-debug` (`linux-amd64-debug` on Linux), or `just test-debug`.
 
 ## AI usage
 
