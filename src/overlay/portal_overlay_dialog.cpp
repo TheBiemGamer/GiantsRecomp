@@ -11,6 +11,7 @@
 #include <rex/ui/imgui_drawer.h>
 
 #include "hooks/portal_hook.h"
+#include "portal/figure_catalog.h"
 #include "portal/software/software_portal.h"
 #include "xex_verify.h"  // giantrecomp::Utf8: path -> UTF-8, never throws on non-ANSI characters
 
@@ -67,6 +68,9 @@ void PortalOverlayDialog::OnDraw(ImGuiIO& io) {
     return;
   }
 
+  if (ImGui::Button(creating_ ? "Browse" : "New Figure")) creating_ = !creating_;
+  ImGui::SameLine();
+
   // Slot selector: also shows every slot's current figure by name.
   if (ImGui::BeginCombo("Slot", SlotLabel(software, selected_slot_).c_str())) {
     for (int i = 0; i < portal::kMaxFigures; ++i) {
@@ -83,6 +87,37 @@ void PortalOverlayDialog::OnDraw(ImGuiIO& io) {
   ImGui::EndDisabled();
 
   ImGui::Separator();
+
+  if (creating_) {
+    ImGui::InputTextWithHint("Filter", "Skylander name", filter_, sizeof(filter_));
+    const std::string filter = Lower(filter_);
+    ImGui::BeginChild("create_list", ImVec2(0, 0), true);
+    std::string last_game;
+    bool section_open = false;
+    for (const auto& sky : portal::AllSkylanders()) {
+      if (!filter.empty() && Lower(std::string(sky.name)).find(filter) == std::string::npos) continue;
+      if (sky.game != last_game) {
+        section_open = ImGui::CollapsingHeader(sky.game.data(), ImGuiTreeNodeFlags_DefaultOpen);
+        last_game = std::string(sky.game);
+      }
+      if (!section_open) continue;
+      ImGui::PushID(static_cast<int>(sky.id) * 100000 + sky.variant);
+      ImGui::TextUnformatted(std::string(sky.name).c_str());
+      ImGui::SameLine(ImGui::GetWindowWidth() - 80);
+      if (ImGui::Button("Create")) {
+        if (!CreateAndPlaceFigure(selected_slot_, sky)) {
+          REXLOG_WARN("Portal overlay: could not create '{}'", sky.name);
+        } else {
+          Rescan();
+          creating_ = false;
+        }
+      }
+      ImGui::PopID();
+    }
+    ImGui::EndChild();
+    ImGui::End();
+    return;
+  }
 
   const std::string current_dir = REXCVAR_GET(portal_figures_dir);
   if (current_dir.empty()) {
@@ -124,7 +159,7 @@ void PortalOverlayDialog::OnDraw(ImGuiIO& io) {
       last_game = entry.game;
     }
     ImGui::PushID(entry.path.string().c_str());
-    ImGui::TextUnformatted(entry.name.c_str());
+    ImGui::TextUnformatted(entry.display_name.c_str());
     ImGui::SameLine(ImGui::GetWindowWidth() - 80);
     if (ImGui::Button("Place")) {
       if (!PlaceFigureFromFile(selected_slot_, entry.path)) {
