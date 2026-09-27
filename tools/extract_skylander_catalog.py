@@ -3,16 +3,22 @@
 Scans every .dump file under the user's local dump collection, reads each figure's id/variant
 bytes, and writes out the compiled-in {id, variant, name, game} catalog used by the in-game
 figure picker and creator. Games are ordered by real-world release order (folders are numbered
-accordingly), not alphabetically. Run with: python3 tools/extract_skylander_catalog.py
+accordingly), not alphabetically. Run with:
+    python3 tools/extract_skylander_catalog.py <path to dump collection root>
 """
 
+import argparse
 import datetime
 import re
 import struct
 from pathlib import Path
 from collections import defaultdict
 
-root = Path(r"C:\Users\Noah\Documents\giantsrecomp\Dumps Clean")
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("dumps_root", type=Path, help="Root folder containing one subfolder per game of .dump files")
+args = parser.parse_args()
+
+root = args.dumps_root
 games = sorted([d for d in root.iterdir() if d.is_dir()])
 
 def clean_game(g):
