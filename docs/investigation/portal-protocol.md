@@ -129,3 +129,35 @@ call entirely, and hidapi's `hid_send_feature_report()` (control-transfer, Featu
 semantics) would be the one to try instead — cheap to test, since it only changes one call site in
 `UsbPortal::Write`. Not attempted in this pass; flagged here for the next one rather than guessed
 at inline.
+
+## Both follow-up hypotheses tried, both disproven (2026-09-27, same session)
+
+*Observed*, both against the real Wii U portal, throwaway diagnostic builds (not committed):
+
+- **Feature report instead of Output report**: swapped `hid_write()` for
+  `hid_send_feature_report()` in `UsbPortal::Write`, same buffer. Every call returned `-1`
+  (error) — the device does not implement a Feature report at all. This rules out the Feature-
+  report hypothesis above; the device's command report genuinely is an Output report, and
+  `hid_write()` is the right call.
+- **Reply buried behind stale status frames**: after every `hid_write`, drained up to 5 more
+  reports back-to-back with a 5ms timeout each (`hid_read_timeout`), instead of waiting for the
+  next normal poll cycle. Across dozens of write/drain cycles, every single drained report —
+  buffered or not — was `53` (status). Never once saw a `52`-prefixed reply, buried or otherwise.
+  This rules out a queuing/staleness explanation: the device is not withholding a reply behind a
+  backlog, it simply never sends one.
+
+**Conclusion so far**: the real device does not implement the request/reply model the milestone-4
+spike assumed (one queued reply per written command) at all. It looks like a pure autonomous
+status-stream device: it reports its own state continuously on the IN endpoint, and whatever
+effect a written command has (activating, LEDs, block reads) happens silently, reflected only in
+the next status frame's state bits, if at all — never as a distinct reply frame keyed to the
+command that was sent. `SoftwarePortal`'s reply-queue model (`replies_` in
+`software_portal.cpp`) and the whole framing this feature was built against may not describe how
+real hardware behaves; the milestone-4 spike's reply shapes (`R`→`52 02 1B`, `A`→`41 <n> FF 77`,
+etc.) were the *spike's own* chosen replies when it stood in for the portal, not necessarily
+verified against real firmware.
+
+**Not yet tried**: a real packet capture (USBPcap + Wireshark, or Cemu's own logging with
+`BackendLibusb` against this exact device) to see what a real console/Cemu session actually
+exchanges with this hardware, since both cheap code-level hypotheses are now exhausted and further
+guessing from this side isn't warranted without new ground truth.
