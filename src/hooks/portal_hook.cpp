@@ -28,6 +28,13 @@ namespace {
 
 std::atomic<giantrecomp::portal::PortalDevice*> g_portal{nullptr};
 
+// portal_figure/portal_mode arrive as UTF-8; convert explicitly so non-ANSI characters survive
+// (path::string() would throw for characters outside the ANSI code page).
+std::filesystem::path Utf8ToPath(const std::string& utf8) {
+  const std::u8string u8(reinterpret_cast<const char8_t*>(utf8.data()), utf8.size());
+  return std::filesystem::path(u8);
+}
+
 }  // namespace
 
 namespace giantrecomp {
@@ -46,10 +53,20 @@ void InstallConfiguredPortal() {
   auto* software = new portal::SoftwarePortal();  // intentionally never freed, see the header
   const std::string figure_path = REXCVAR_GET(portal_figure);
   if (!figure_path.empty()) {
-    // The path arrives as UTF-8; convert explicitly so non-ANSI characters survive.
-    const std::u8string utf8(reinterpret_cast<const char8_t*>(figure_path.data()), figure_path.size());
-    if (auto figure = portal::LoadFigureFile(std::filesystem::path(utf8))) {
+    const std::filesystem::path path = Utf8ToPath(figure_path);
+    if (auto figure = portal::LoadFigureFile(path)) {
       software->PlaceFigure(0, *figure);
+      // Save the game's changes back to the same file it was loaded from. Writes are infrequent
+      // (once per figure-affecting event, not per frame), so an atomic save on the calling thread
+      // is cheap enough; there is no periodic or on-exit save to lose if the process is killed.
+      software->SetWriteCallback([path](int slot, const portal::FigureData& data) {
+        if (slot != 0) return;
+        if (portal::SaveFigureFileAtomic(path, data)) {
+          REXLOG_INFO("Portal: saved changes back to the figure file");
+        } else {
+          REXLOG_WARN("Portal: could not save changes back to the figure file");
+        }
+      });
       REXLOG_INFO("Portal: placed the figure from '{}' in slot 0", figure_path);
     } else {
       REXLOG_WARN("Portal: cannot load '{}' (it must be a regular file of exactly {} bytes); "

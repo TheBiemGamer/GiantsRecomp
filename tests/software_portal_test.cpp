@@ -2,6 +2,8 @@
 #include <chrono>
 #include <initializer_list>
 #include <thread>
+#include <utility>
+#include <vector>
 
 #include "portal/software/software_portal.h"
 #include "test_util.h"
@@ -272,6 +274,40 @@ int main() {
     p.Read();
     for (int i = 0; i < 8; ++i) CHECK(slot_state(p.Read(), 0) == 3);
     CHECK(slot_state(p.Read(), 0) == 1);
+  }
+
+  // SetWriteCallback fires with (slot, full figure data) exactly when a 'W' actually writes, and
+  // not for out-of-range blocks or empty slots. Removing the callback stops further notifications.
+  {
+    SoftwarePortal p;
+    p.PlaceFigure(2, pattern());
+    std::vector<std::pair<int, FigureData>> calls;
+    p.SetWriteCallback([&](int slot, const FigureData& data) { calls.emplace_back(slot, data); });
+
+    Report w = Cmd({'W', 0x02, 0x03});
+    for (size_t i = 0; i < kBlockSize; ++i) w[3 + i] = static_cast<uint8_t>(0x50 + i);
+    p.Write(w);
+    p.Read();  // the reply
+    CHECK(calls.size() == 1);
+    CHECK(calls[0].first == 2);
+    CHECK(calls[0].second[3 * kBlockSize] == 0x50);
+
+    Report bad = w;
+    bad[2] = 64;  // out of range: no callback
+    p.Write(bad);
+    p.Read();
+    CHECK(calls.size() == 1);
+
+    Report empty_slot = w;
+    empty_slot[1] = 0x09;  // slot 9 has no figure: no callback
+    p.Write(empty_slot);
+    p.Read();
+    CHECK(calls.size() == 1);
+
+    p.SetWriteCallback(nullptr);
+    p.Write(w);
+    p.Read();
+    CHECK(calls.size() == 1);
   }
 
   // The overlay thread and the game thread use the portal at the same time.

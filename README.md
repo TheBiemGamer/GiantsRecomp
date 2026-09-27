@@ -12,10 +12,9 @@ This is a solo, for-fun project to see whether a static recompilation of Skyland
 
 **Works today**
 - The game starts, renders, plays sound, and plays through Story mode with a controller.
-- A virtual Portal of Power with one of your own figures on it.
+- A virtual Portal of Power with one of your own figures on it. Progress on that figure (levelling up, upgrades) is saved back to its `.dump` file, so it carries over between play sessions.
 
 **Not yet**
-- Progress on a figure (levelling up, upgrades) is not saved back to its file.
 - Only one figure at a time, chosen before you start. A menu to swap figures while playing is planned.
 - Real portals over USB (Wii U and Xbox 360 Traptanium portals are the targets).
 - It can be slow. The build tested so far is unoptimized, so expect stutter the first time an effect appears, cutscenes that lag, and the screen occasionally going blank. An optimized build is planned.
@@ -71,7 +70,7 @@ out\build\win-amd64-debug\giantrecomp.exe --game_data_root rom --portal_figure "
 ```
 
 - Press **A** at the title screen, then choose **Story** and a slot marked **NEW**. To quit, close the window.
-- `--portal_figure <file>` puts one of your figure dumps on the virtual portal. Progress is not saved yet, so the file is not modified.
+- `--portal_figure <file>` puts one of your figure dumps on the virtual portal. **The game's changes to the figure are saved back to this exact file as you play**, the same as a real portal would. Use a copy if you want to keep the original untouched.
 - `--portal_mode software` (the default) uses the virtual portal. `--portal_mode none` uses no portal, and the game then says it can't find one.
 - `--portal_test_figure` puts an all-zero test figure on the portal. The game reports it as a problem toy.
 

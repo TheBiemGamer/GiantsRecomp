@@ -19,62 +19,71 @@ Report MakeReport(std::initializer_list<uint8_t> bytes) {
 }  // namespace
 
 void SoftwarePortal::Write(const Report& in) {
-  std::lock_guard<std::mutex> lock(mu_);
-  switch (in[0]) {
-    case 'R':  // ready
-      replies_.push_back(MakeReport({0x52, 0x02, 0x1B}));
-      break;
-    case 'A': {  // activate (argument != 0) or deactivate (argument == 0)
-      const bool activate = in[1] != 0;
-      if (activate && !active_) {
-        // Figures are announced when the portal goes from inactive to active. The game repeats
-        // 'A 01' about every 10 seconds while it is already active; announcing again then made
-        // every figure look taken off and put straight back.
-        for (Slot& s : slots_) {
-          if (s.present) {
-            s.state = SlotState::kAdded;
-            s.reports_left = kAddedReports;
+  std::optional<std::pair<int, FigureData>> written;
+  std::function<void(int, const FigureData&)> callback;
+  {
+    std::lock_guard<std::mutex> lock(mu_);
+    switch (in[0]) {
+      case 'R':  // ready
+        replies_.push_back(MakeReport({0x52, 0x02, 0x1B}));
+        break;
+      case 'A': {  // activate (argument != 0) or deactivate (argument == 0)
+        const bool activate = in[1] != 0;
+        if (activate && !active_) {
+          // Figures are announced when the portal goes from inactive to active. The game repeats
+          // 'A 01' about every 10 seconds while it is already active; announcing again then made
+          // every figure look taken off and put straight back.
+          for (Slot& s : slots_) {
+            if (s.present) {
+              s.state = SlotState::kAdded;
+              s.reports_left = kAddedReports;
+            }
           }
+        } else if (!activate) {
+          for (Slot& s : slots_) s.state = SlotState::kEmpty;  // figures stay; just not reported
         }
-      } else if (!activate) {
-        for (Slot& s : slots_) s.state = SlotState::kEmpty;  // figures stay; they are just not reported
+        active_ = activate;
+        replies_.push_back(MakeReport({0x41, in[1], 0xFF, 0x77}));
+        break;
       }
-      active_ = activate;
-      replies_.push_back(MakeReport({0x41, in[1], 0xFF, 0x77}));
-      break;
-    }
-    case 'M':  // version
-      replies_.push_back(MakeReport({0x4D, in[1], 0x00, 0x19}));
-      break;
-    case 'Q': {  // read one block of a figure
-      const uint8_t slot = in[1] & 0x0F;
-      const uint8_t block = in[2];
-      Report out = MakeReport({0x51, slot, block});
-      const Slot& s = slots_[slot];
-      if (s.present && block < kBlockCount) {
-        out[1] |= 0x10;
-        std::copy_n(s.data.begin() + block * kBlockSize, kBlockSize, out.begin() + 3);
+      case 'M':  // version
+        replies_.push_back(MakeReport({0x4D, in[1], 0x00, 0x19}));
+        break;
+      case 'Q': {  // read one block of a figure
+        const uint8_t slot = in[1] & 0x0F;
+        const uint8_t block = in[2];
+        Report out = MakeReport({0x51, slot, block});
+        const Slot& s = slots_[slot];
+        if (s.present && block < kBlockCount) {
+          out[1] |= 0x10;
+          std::copy_n(s.data.begin() + block * kBlockSize, kBlockSize, out.begin() + 3);
+        }
+        replies_.push_back(out);
+        break;
       }
-      replies_.push_back(out);
-      break;
-    }
-    case 'W': {  // write one block of a figure
-      const uint8_t slot = in[1] & 0x0F;
-      const uint8_t block = in[2];
-      Report out = MakeReport({0x57, slot, block});
-      Slot& s = slots_[slot];
-      if (s.present && block < kBlockCount) {
-        out[1] |= 0x10;
-        std::copy_n(in.begin() + 3, kBlockSize, s.data.begin() + block * kBlockSize);
+      case 'W': {  // write one block of a figure
+        const uint8_t slot = in[1] & 0x0F;
+        const uint8_t block = in[2];
+        Report out = MakeReport({0x57, slot, block});
+        Slot& s = slots_[slot];
+        if (s.present && block < kBlockCount) {
+          out[1] |= 0x10;
+          std::copy_n(in.begin() + 3, kBlockSize, s.data.begin() + block * kBlockSize);
+          written = std::make_pair(static_cast<int>(slot), s.data);
+        }
+        replies_.push_back(out);
+        break;
       }
-      replies_.push_back(out);
-      break;
+      default:
+        // 'S' and 'V' (status is answered by idle reads), the LED commands 'C', 'J' and 'L', and
+        // anything unknown: no reply.
+        break;
     }
-    default:
-      // 'S' and 'V' (status is answered by idle reads), the LED commands 'C', 'J' and 'L', and
-      // anything unknown: no reply.
-      break;
+    // Copy the callback out while still locked; invoke it after unlocking below, since it may do
+    // file I/O and must never run with the portal's lock held.
+    if (written) callback = on_write_;
   }
+  if (written && callback) callback(written->first, written->second);
 }
 
 Report SoftwarePortal::Read() {
@@ -138,6 +147,11 @@ bool SoftwarePortal::HasFigure(int slot) const {
   if (slot < 0 || slot >= kMaxFigures) return false;
   std::lock_guard<std::mutex> lock(mu_);
   return slots_[slot].present;
+}
+
+void SoftwarePortal::SetWriteCallback(std::function<void(int, const FigureData&)> callback) {
+  std::lock_guard<std::mutex> lock(mu_);
+  on_write_ = std::move(callback);
 }
 
 std::optional<FigureData> SoftwarePortal::Figure(int slot) const {

@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <mutex>
 #include <optional>
 
@@ -23,6 +24,11 @@ class SoftwarePortal : public PortalDevice {
   bool HasFigure(int slot) const;
   std::optional<FigureData> Figure(int slot) const;
 
+  // Called after a successful figure write ('W' to a present slot and a valid block), with the
+  // slot index and the figure's full data at that point. Runs on the calling thread (whichever
+  // thread called Write()), outside the portal's lock. Pass nullptr to remove it.
+  void SetWriteCallback(std::function<void(int slot, const FigureData& data)> callback);
+
  private:
   enum class SlotState : uint8_t { kEmpty = 0, kReady = 1, kRemoving = 2, kAdded = 3 };
   struct Slot {
@@ -39,6 +45,7 @@ class SoftwarePortal : public PortalDevice {
   std::array<Slot, kMaxFigures> slots_{};
   bool active_ = false;
   uint8_t counter_ = 0;
+  std::function<void(int, const FigureData&)> on_write_;
 };
 
 }  // namespace giantrecomp::portal

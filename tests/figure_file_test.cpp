@@ -53,5 +53,53 @@ int main() {
     if (data) CHECK((*data)[255] == 255);
   }
 
+  // SaveFigureFileAtomic creates a new file with exactly the given bytes.
+  {
+    fs::path p = fs::temp_directory_path() / L"gr_figure_save_new.dump";
+    fs::remove(p);
+    FigureData d{};
+    for (size_t i = 0; i < d.size(); ++i) d[i] = static_cast<uint8_t>(i * 5 + 2);
+    CHECK(SaveFigureFileAtomic(p, d));
+    auto loaded = LoadFigureFile(p);
+    CHECK(loaded.has_value());
+    if (loaded) CHECK(*loaded == d);
+    fs::remove(p);
+  }
+
+  // It overwrites existing content fully, and leaves no temp file behind.
+  {
+    fs::path p = WriteTemp(L"gr_figure_save_overwrite.dump", kFigureSize, 9);
+    FigureData d{};
+    for (size_t i = 0; i < d.size(); ++i) d[i] = static_cast<uint8_t>(200 - i);
+    CHECK(SaveFigureFileAtomic(p, d));
+    auto loaded = LoadFigureFile(p);
+    CHECK(loaded.has_value());
+    if (loaded) CHECK(*loaded == d);
+    fs::path tmp = p;
+    tmp += L".tmp";
+    CHECK(!fs::exists(tmp));
+  }
+
+  // A location that cannot be written (parent directory missing) fails cleanly and creates nothing.
+  {
+    fs::path p = fs::temp_directory_path() / L"gr_missing_dir_xyz" / L"figure.dump";
+    FigureData d{};
+    CHECK(!SaveFigureFileAtomic(p, d));
+    CHECK(!fs::exists(p));
+  }
+
+  // Paths with spaces, parentheses and non-ANSI characters work for saving too.
+  {
+    fs::path dir = fs::temp_directory_path() / L"gr save (2) 日本";
+    fs::create_directories(dir);
+    fs::path p = dir / L"Tree Rex.dump";
+    FigureData d{};
+    for (size_t i = 0; i < d.size(); ++i) d[i] = static_cast<uint8_t>(i);
+    CHECK(SaveFigureFileAtomic(p, d));
+    auto loaded = LoadFigureFile(p);
+    CHECK(loaded.has_value());
+    if (loaded) CHECK((*loaded)[255] == 255);
+  }
+
   return Finish("figure_file");
 }
