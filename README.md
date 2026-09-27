@@ -116,6 +116,7 @@ This project stands on other people's work.
 - **[ReXGlue SDK](https://github.com/rexglue/rexglue-sdk)** by Tom Clay is the recompiler and runtime everything here is built on. It derives from the [Xenia](https://xenia.jp) Xbox 360 emulator (Ben Vanik and the Xenia contributors) and is inspired by [XenonRecomp](https://github.com/hedge-dev/XenonRecomp) by hedge-dev. It is included unmodified as a submodule and keeps its own license (see `thirdparty/rexglue-sdk/LICENSE`).
 - **[Cemu](https://github.com/cemu-project/Cemu)** and **[RPCS3](https://github.com/RPCS3/rpcs3)** already emulate the Skylanders Portal of Power. I read how they handle it to learn how the portal works: the commands, the Xbox 360 message format, and the layout of a figure. No code was copied from them. Each project has its own license.
 - Everyone who documented the Portal of Power and its figures and made dumping tools that let people keep their own figures.
+- **[Skylanders Ultimate NFC Pack V15](https://skylandersnfc.github.io/Skylanders-Ultimate-NFC-Pack/)** is the source of the figure dumps used to build the game's built-in Skylander name/id catalog, used for the in-game figure creator and picker.
 
 ## License and legal
 
