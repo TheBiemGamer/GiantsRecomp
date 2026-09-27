@@ -5,6 +5,8 @@
 
 #include <rex/cvar.h>
 
+#include "portal/figure_catalog.h"  // for portal::SkylanderInfo
+
 namespace giantrecomp::portal {
 class SoftwarePortal;
 }  // namespace giantrecomp::portal
@@ -31,6 +33,13 @@ bool PlaceFigureFromFile(int slot, const std::filesystem::path& path);
 // Removes the figure from `slot`, if any, and forgets what file it was saving to. Returns false if
 // there is no active software portal or the slot was already empty.
 bool RemoveFigureFromSlot(int slot);
+
+// Creates a new blank figure for `sky` under portal_figures_dir/<game>/<name>.dump (creating the
+// game subfolder if needed; an existing file of that name is never overwritten -- a " (2)", " (3)"
+// suffix is added instead), then places it into `slot` exactly like PlaceFigureFromFile. Returns
+// false, and creates nothing, if there is no active software portal, portal_figures_dir is unset,
+// or the folder can't be created.
+bool CreateAndPlaceFigure(int slot, const portal::SkylanderInfo& sky);
 
 // The active software portal, for read-only status queries (HasFigure/Figure) from the overlay.
 // nullptr if portal_mode is not "software".

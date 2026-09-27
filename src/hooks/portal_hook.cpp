@@ -114,6 +114,23 @@ bool RemoveFigureFromSlot(int slot) {
   return software->RemoveFigure(slot);
 }
 
+bool CreateAndPlaceFigure(int slot, const portal::SkylanderInfo& sky) {
+  portal::SoftwarePortal* software = g_software_portal.load();
+  if (!software) return false;
+  const std::string dir_utf8 = REXCVAR_GET(portal_figures_dir);
+  if (dir_utf8.empty()) return false;
+
+  const std::filesystem::path game_dir = Utf8ToPath(dir_utf8) / std::string(sky.game);
+  std::error_code ec;
+  std::filesystem::create_directories(game_dir, ec);
+  if (ec) return false;
+
+  const std::filesystem::path path = portal::UniqueFigurePath(game_dir, sky.name);
+  const portal::FigureData data = portal::CreateBlankFigure(sky.id, sky.variant);
+  if (!portal::SaveFigureFileAtomic(path, data)) return false;
+  return PlaceFigureFromFile(slot, path);
+}
+
 portal::SoftwarePortal* GetSoftwarePortal() { return g_software_portal.load(); }
 
 }  // namespace giantrecomp
