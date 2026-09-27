@@ -9,12 +9,13 @@ gpu_allow_invalid_fetch_constants = true
 # frame_rate_limit = 60
 
 # Supersamples the internal render resolution by this factor (1-8) before downscaling to your
-# window/monitor -- higher looks sharper at a real GPU cost. 1 (the default) is no scaling.
+# window/monitor -- higher looks sharper at a real GPU cost (scale N costs N^2 the pixels). 1 (the
+# default) is no scaling; 2 is a good starting point for a sharper, still-affordable image.
 # resolution_scale = 2
 
-# Sets both the guest video mode and the startup window size together, e.g. for an ultrawide
-# monitor. Skylanders Giants wasn't built for anything but 16:9, so HUD/FOV behavior at other
-# aspect ratios is untested -- try it and see.
+# Sets the startup window size, e.g. for an ultrawide or 4K monitor. Giants only ever ran at
+# 16:9/4:3 on real hardware, so other aspect ratios are pillarboxed/letterboxed to the nearest of
+# those rather than stretched -- wide-FOV gameplay is planned but not implemented yet.
 # resolution = "3440x1440"
 
 # "software" uses the virtual portal; "none" disables it (the game then says it can't find one).

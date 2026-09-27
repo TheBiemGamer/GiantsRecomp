@@ -84,7 +84,7 @@ Copy [`giantsrecomp.toml.example`](giantsrecomp.toml.example) next to `giantreco
 - `user_data_root`: where saves, achievements, shader cache, and the default figures folder live. Leave empty (the default) to use `Documents\giantsrecomp`.
 - `frame_rate_limit`: caps the host frame rate to this many FPS. `0` (the default) is unlimited.
 - `resolution_scale`: supersamples the internal render resolution by this factor (`1`-`8`) before downscaling to your window/monitor — sharper, at a real GPU cost. `1` (the default) is no scaling.
-- `resolution`: sets both the guest video mode and the startup window size together, e.g. `"3440x1440"` for an ultrawide monitor. Confirmed working — full-width 3D scene, no letterboxing — though Giants wasn't built for anything but 16:9, so HUD-heavy screens haven't been exhaustively checked.
+- `resolution`: sets the startup window size, e.g. `"3440x1440"` for an ultrawide monitor or `"4k"`. The window and internal render resolution use this size in full. Giants itself only ever ran at 16:9 or 4:3 on real Xbox 360 hardware, so anything else is pillarboxed/letterboxed to the nearest of those (matching real console output) rather than stretched — full ultrawide/wide-FOV gameplay is planned but not implemented yet.
 
 Any setting can still be passed as a command-line flag instead (`--portal_mode software`), which overrides whatever the settings file has. One exception: `--game_data_root` (where `rom\` lives) can't be set from the settings file — it's read before the file loads — but it already defaults to `rom` next to the executable, so you only need the flag if your dump lives somewhere else.
 
