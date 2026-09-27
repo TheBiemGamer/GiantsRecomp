@@ -14,10 +14,11 @@
 #include "portal/portal_device.h"
 #include "portal/portal_mode.h"
 #include "portal/software/software_portal.h"
+#include "portal/usb/usb_portal.h"
 #include "portal/xbox_frame.h"
 
 REXCVAR_DEFINE_STRING(portal_mode, "software", "Portal",
-                      "Portal backend: 'software' or 'none'");
+                      "Portal backend: 'software', 'usb', or 'none'");
 REXCVAR_DEFINE_BOOL(portal_test_figure, false, "Portal",
                     "Development: put an all-zero figure on the portal (the game reports it as a "
                     "problem toy)");
@@ -62,6 +63,21 @@ void InstallConfiguredPortal(const std::filesystem::path& default_figures_dir) {
     REXLOG_INFO("Portal: none");
     return;
   }
+  if (*mode == portal::PortalMode::kUsb) {
+    auto* usb = new portal::UsbPortal();  // intentionally never freed, matching the software path
+    if (!usb->IsOpen()) {
+      REXLOG_WARN("Portal: no USB portal found (checked known Skylanders portal VID/PIDs); "
+                  "running with no portal");
+      delete usb;
+      return;
+    }
+    // g_software_portal is intentionally left null here: it is a SoftwarePortal-only status
+    // handle (used by GetSoftwarePortal() for the figure-picker overlay), and there is no
+    // software portal active in this mode.
+    g_portal.store(usb);
+    REXLOG_INFO("Portal: usb");
+    return;
+  }
 
   auto* software = new portal::SoftwarePortal();  // intentionally never freed, see the header
   // The source path each slot's figure was loaded from (if any) is tracked by SoftwarePortal
@@ -80,9 +96,6 @@ void InstallConfiguredPortal(const std::filesystem::path& default_figures_dir) {
   // Publish the portal before placing the startup figure: InstallConfiguredPortal runs on the
   // app's setup thread, before any guest thread exists to call the hooks, so this ordering cannot
   // race with a hook call.
-  // TODO(milestone 7): when a USB PortalDevice can also be installed here, clear
-  // g_software_portal in that branch (leave it null) so GetSoftwarePortal() -- and so the
-  // overlay -- never returns a stale pointer to a software portal the hooks no longer use.
   g_software_portal.store(software);
   g_portal.store(software);
 
