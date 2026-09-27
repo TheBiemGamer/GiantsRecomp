@@ -15,6 +15,15 @@ if(NOT REXSDK_DIR AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/rexglue-sdk
         "Path to the rexglue-sdk source tree" FORCE)
 endif()
 
+# hidapi provides USB HID access for the real portal backend (portal_mode = "usb"). Its own
+# CMakeLists picks the right per-OS backend automatically -- on Windows this is the native HID
+# API, not libusb, so no WinUSB/Zadig driver replacement is needed.
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/hidapi/CMakeLists.txt")
+    message(FATAL_ERROR "thirdparty/hidapi is missing. Run: git submodule update --init --recursive")
+endif()
+set(HIDAPI_WITH_TESTS OFF CACHE BOOL "" FORCE)
+add_subdirectory(thirdparty/hidapi)
+
 include(generated/rexglue.cmake)
 
 # Recompiled code is generated from the user's own default.xex and is not in the repository.
