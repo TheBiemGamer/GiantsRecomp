@@ -105,6 +105,7 @@ add_test(NAME xex_verify COMMAND giantrecomp_tests)
 add_library(giantrecomp_portal STATIC
     src/portal/figure_catalog.cpp
     src/portal/figure_file.cpp
+    src/portal/figure_stats.cpp
     src/portal/portal_mode.cpp
     src/portal/xbox_frame.cpp
     src/portal/software/software_portal.cpp
@@ -112,7 +113,7 @@ add_library(giantrecomp_portal STATIC
 target_include_directories(giantrecomp_portal PUBLIC src)
 target_compile_features(giantrecomp_portal PUBLIC cxx_std_23)
 
-foreach(portal_test portal_framing_test portal_mode_test software_portal_test figure_file_test figure_catalog_test)
+foreach(portal_test portal_framing_test portal_mode_test software_portal_test figure_file_test figure_catalog_test figure_stats_test)
     add_executable(${portal_test} tests/${portal_test}.cpp)
     target_include_directories(${portal_test} PRIVATE tests)
     target_link_libraries(${portal_test} PRIVATE giantrecomp_portal)
