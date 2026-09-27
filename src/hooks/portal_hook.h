@@ -1,11 +1,13 @@
 #pragma once
 
 #include <filesystem>
+#include <optional>
 #include <string>
 
 #include <rex/cvar.h>
 
 #include "portal/figure_catalog.h"  // for portal::SkylanderInfo
+#include "portal/usb/usb_portal.h"  // for portal::FigureData
 
 namespace giantrecomp::portal {
 class SoftwarePortal;
@@ -53,5 +55,10 @@ portal::SoftwarePortal* GetSoftwarePortal();
 // The active USB portal, for read-only status queries (FigurePresent/DetectedIdVariant) from the
 // overlay. nullptr if portal_mode is not "usb" or no device was found.
 portal::UsbPortal* GetUsbPortal();
+
+// Reads a real figure's full data directly from the portal, independent of the game's own
+// polling. Returns nullopt if there's no active USB portal, no figure in `slot`, or the read
+// fails.
+std::optional<portal::FigureData> ReadRealFigureBlocks(int slot);
 
 }  // namespace giantrecomp

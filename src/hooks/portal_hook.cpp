@@ -151,6 +151,12 @@ portal::SoftwarePortal* GetSoftwarePortal() { return g_software_portal.load(); }
 
 portal::UsbPortal* GetUsbPortal() { return g_usb_portal.load(); }
 
+std::optional<portal::FigureData> ReadRealFigureBlocks(int slot) {
+  portal::UsbPortal* usb = g_usb_portal.load();
+  if (!usb) return std::nullopt;
+  return usb->ReadAllBlocks(slot);
+}
+
 }  // namespace giantrecomp
 
 // The game reads and writes its portal through two small recompiled wrappers (see
