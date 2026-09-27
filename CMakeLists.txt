@@ -85,7 +85,13 @@ endif()
 
 add_library(giantrecomp_verify STATIC src/xex_verify.cpp)
 target_include_directories(giantrecomp_verify PUBLIC src)
-target_link_libraries(giantrecomp_verify PUBLIC bcrypt)
+# Uses the SDK's vendored, portable SHA-256 (thirdparty/crypto) instead of a platform crypto API
+# (BCrypt on Windows has no Linux/macOS equivalent), so this one implementation covers every preset.
+if(NOT REXSDK_DIR)
+    message(FATAL_ERROR "REXSDK_DIR must be set (giantrecomp_verify needs its vendored SHA-256 implementation)")
+endif()
+target_include_directories(giantrecomp_verify PRIVATE "${REXSDK_DIR}/thirdparty")
+target_sources(giantrecomp_verify PRIVATE "${REXSDK_DIR}/thirdparty/crypto/sha256.cpp")
 
 target_link_libraries(giantrecomp PRIVATE giantrecomp_verify giantrecomp_portal hidapi::hidapi)
 target_compile_definitions(giantrecomp PRIVATE GIANTRECOMP_XEX_SHA256="${GIANTRECOMP_XEX_SHA256}")

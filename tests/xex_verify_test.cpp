@@ -81,18 +81,18 @@ int main() {
     CHECK(giantrecomp::Utf8(fs::path(L"日")) == std::string("\xE6\x97\xA5"));
 
     auto unreadable = VerifyXex(wide / L"missing.xex", kAbc);
-    std::wstring msg = giantrecomp::DescribeXexProblem(wide / L"missing.xex", unreadable, kAbc);
-    CHECK(msg.find((wide / L"missing.xex").wstring()) != std::wstring::npos);
-    CHECK(msg.find(L"Cannot read") != std::wstring::npos);
+    std::string msg = giantrecomp::DescribeXexProblem(wide / L"missing.xex", unreadable, kAbc);
+    CHECK(msg.find(giantrecomp::Utf8(wide / L"missing.xex")) != std::string::npos);
+    CHECK(msg.find("Cannot read") != std::string::npos);
   }
 
   // DescribeXexProblem: empty for a match; both hashes for a mismatch; a message for a bad pin.
   {
     fs::path f = WriteTemp("gr_desc.bin", "abc");
     CHECK(giantrecomp::DescribeXexProblem(f, VerifyXex(f, kAbc), kAbc).empty());
-    std::wstring mm = giantrecomp::DescribeXexProblem(f, VerifyXex(f, kEmpty), kEmpty);
-    CHECK(mm.find(std::wstring(kEmpty, kEmpty + 64)) != std::wstring::npos);
-    CHECK(mm.find(std::wstring(kAbc, kAbc + 64)) != std::wstring::npos);
+    std::string mm = giantrecomp::DescribeXexProblem(f, VerifyXex(f, kEmpty), kEmpty);
+    CHECK(mm.find(std::string(kEmpty, kEmpty + 64)) != std::string::npos);
+    CHECK(mm.find(std::string(kAbc, kAbc + 64)) != std::string::npos);
     CHECK(!giantrecomp::DescribeXexProblem(f, VerifyXex(f, "xyz"), "xyz").empty());
   }
 

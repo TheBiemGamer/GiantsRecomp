@@ -114,11 +114,18 @@ FigureData CreateBlankFigure(uint16_t id, uint16_t variant) {
 }
 
 std::filesystem::path UniqueFigurePath(const std::filesystem::path& dir, std::string_view name) {
+  // Built entirely from UTF-8 (path::u8string()/the char8_t constructor), not path::native(): that
+  // returns std::wstring on Windows but std::string on Linux/macOS, so concatenating it with wide
+  // string literals compiles only on Windows.
   const std::u8string u8name(reinterpret_cast<const char8_t*>(name.data()), name.size());
-  const std::filesystem::path base(u8name);
-  std::filesystem::path candidate = dir / (base.native() + std::filesystem::path(L".dump").native());
+  const std::u8string base = std::filesystem::path(u8name).u8string();
+  auto with_suffix = [&](const std::string& suffix) {
+    const std::u8string u8suffix(reinterpret_cast<const char8_t*>(suffix.data()), suffix.size());
+    return dir / std::filesystem::path(base + u8suffix);
+  };
+  std::filesystem::path candidate = with_suffix(".dump");
   for (int n = 2; std::filesystem::exists(candidate); ++n) {
-    candidate = dir / (base.native() + L" (" + std::to_wstring(n) + L").dump");
+    candidate = with_suffix(" (" + std::to_string(n) + ").dump");
   }
   return candidate;
 }

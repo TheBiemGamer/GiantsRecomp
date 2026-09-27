@@ -29,9 +29,9 @@ XexCheckResult VerifyXex(const std::filesystem::path& xex, std::string_view expe
 // UTF-8 form of a path. Unlike path::string(), never throws for characters outside the ANSI code page.
 std::string Utf8(const std::filesystem::path& p);
 
-// Human-readable explanation for anything other than XexCheck::Match; empty for a match. Wide so a
-// game folder with any Unicode characters is shown exactly as it was tried.
-std::wstring DescribeXexProblem(const std::filesystem::path& xex, const XexCheckResult& result,
-                                std::string_view expected_sha256);
+// Human-readable explanation for anything other than XexCheck::Match; empty for a match. UTF-8, so
+// a game folder with any Unicode characters is shown exactly as it was tried (see Utf8()).
+std::string DescribeXexProblem(const std::filesystem::path& xex, const XexCheckResult& result,
+                               std::string_view expected_sha256);
 
 }  // namespace giantrecomp

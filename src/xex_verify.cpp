@@ -1,7 +1,6 @@
 #include "xex_verify.h"
 
-#include <windows.h>
-#include <bcrypt.h>
+#include <crypto/sha256.h>
 
 #include <cctype>
 #include <fstream>
@@ -35,43 +34,16 @@ std::optional<std::string> Sha256File(const std::filesystem::path& path) {
   std::ifstream in(path, std::ios::binary);
   if (!in) return std::nullopt;
 
-  BCRYPT_ALG_HANDLE alg = nullptr;
-  if (BCryptOpenAlgorithmProvider(&alg, BCRYPT_SHA256_ALGORITHM, nullptr, 0) != 0) {
-    return std::nullopt;
-  }
-  BCRYPT_HASH_HANDLE hash = nullptr;
-  if (BCryptCreateHash(alg, &hash, nullptr, 0, nullptr, 0, 0) != 0) {
-    BCryptCloseAlgorithmProvider(alg, 0);
-    return std::nullopt;
-  }
-
-  bool ok = true;
+  sha256::SHA256 hasher;
   std::vector<char> buf(kChunkBytes);
   while (in) {
     in.read(buf.data(), static_cast<std::streamsize>(buf.size()));
     const std::streamsize n = in.gcount();
-    if (n > 0 && BCryptHashData(hash, reinterpret_cast<PUCHAR>(buf.data()),
-                                static_cast<ULONG>(n), 0) != 0) {
-      ok = false;
-      break;
-    }
+    if (n > 0) hasher.add(buf.data(), static_cast<size_t>(n));
   }
-  if (in.bad()) ok = false;
+  if (in.bad()) return std::nullopt;
 
-  UCHAR digest[32] = {};
-  if (ok && BCryptFinishHash(hash, digest, sizeof(digest), 0) != 0) ok = false;
-  BCryptDestroyHash(hash);
-  BCryptCloseAlgorithmProvider(alg, 0);
-  if (!ok) return std::nullopt;
-
-  static const char kHex[] = "0123456789abcdef";
-  std::string hex;
-  hex.reserve(64);
-  for (UCHAR b : digest) {
-    hex.push_back(kHex[b >> 4]);
-    hex.push_back(kHex[b & 0xF]);
-  }
-  return hex;
+  return hasher.getHash();
 }
 
 XexCheckResult VerifyXex(const std::filesystem::path& xex, std::string_view expected_sha256) {
@@ -87,24 +59,23 @@ std::string Utf8(const std::filesystem::path& p) {
   return std::string(reinterpret_cast<const char*>(u.data()), u.size());
 }
 
-std::wstring DescribeXexProblem(const std::filesystem::path& xex, const XexCheckResult& result,
-                                std::string_view expected_sha256) {
+std::string DescribeXexProblem(const std::filesystem::path& xex, const XexCheckResult& result,
+                               std::string_view expected_sha256) {
   switch (result.status) {
     case XexCheck::Match:
       return {};
     case XexCheck::Unreadable:
-      return L"Cannot read " + xex.wstring() +
-             L"\nPut your extracted Skylanders Giants disc contents in the game folder "
-             L"(default.xex must be at its top level).";
+      return "Cannot read " + Utf8(xex) +
+             "\nPut your extracted Skylanders Giants disc contents in the game folder "
+             "(default.xex must be at its top level).";
     case XexCheck::Mismatch:
-      return L"default.xex is not the supported build.\nExpected SHA-256: " +
-             std::wstring(expected_sha256.begin(), expected_sha256.end()) +
-             L"\nFound SHA-256:    " +
-             std::wstring(result.actual_sha256.begin(), result.actual_sha256.end());
+      return "default.xex is not the supported build.\nExpected SHA-256: " +
+             std::string(expected_sha256) +
+             "\nFound SHA-256:    " + result.actual_sha256;
     case XexCheck::BadExpected:
       break;
   }
-  return L"Internal error: the pinned SHA-256 is malformed.";
+  return "Internal error: the pinned SHA-256 is malformed.";
 }
 
 }  // namespace giantrecomp
