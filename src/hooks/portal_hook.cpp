@@ -73,6 +73,9 @@ void InstallConfiguredPortal() {
   // Publish the portal before placing the startup figure: InstallConfiguredPortal runs on the
   // app's setup thread, before any guest thread exists to call the hooks, so this ordering cannot
   // race with a hook call.
+  // TODO(milestone 7): when a USB PortalDevice can also be installed here, clear
+  // g_software_portal in that branch (leave it null) so GetSoftwarePortal() -- and so the
+  // overlay -- never returns a stale pointer to a software portal the hooks no longer use.
   g_software_portal.store(software);
   g_portal.store(software);
 
