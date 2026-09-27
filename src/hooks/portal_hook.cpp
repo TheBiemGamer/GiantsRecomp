@@ -2,12 +2,14 @@
 
 #include <atomic>
 #include <cstdint>
+#include <filesystem>
 #include <string>
 
 #include <rex/cvar.h>
 #include <rex/hook.h>
 #include <rex/logging.h>
 
+#include "portal/figure_file.h"
 #include "portal/portal_device.h"
 #include "portal/portal_mode.h"
 #include "portal/software/software_portal.h"
@@ -18,6 +20,9 @@ REXCVAR_DEFINE_STRING(portal_mode, "software", "Portal",
 REXCVAR_DEFINE_BOOL(portal_test_figure, false, "Portal",
                     "Development: put an all-zero figure on the portal (the game reports it as a "
                     "problem toy)");
+REXCVAR_DEFINE_STRING(portal_figure, "", "Portal",
+                      "Path to a raw 1024-byte figure dump to put on the portal (slot 0). The file "
+                      "is only read; changes the game makes to the figure are not saved yet");
 
 namespace {
 
@@ -39,7 +44,19 @@ void InstallConfiguredPortal() {
     return;
   }
   auto* software = new portal::SoftwarePortal();  // intentionally never freed, see the header
-  if (REXCVAR_GET(portal_test_figure)) {
+  const std::string figure_path = REXCVAR_GET(portal_figure);
+  if (!figure_path.empty()) {
+    // The path arrives as UTF-8; convert explicitly so non-ANSI characters survive.
+    const std::u8string utf8(reinterpret_cast<const char8_t*>(figure_path.data()), figure_path.size());
+    if (auto figure = portal::LoadFigureFile(std::filesystem::path(utf8))) {
+      software->PlaceFigure(0, *figure);
+      REXLOG_INFO("Portal: placed the figure from '{}' in slot 0", figure_path);
+    } else {
+      REXLOG_WARN("Portal: cannot load '{}' (it must be a regular file of exactly {} bytes); "
+                  "running with an empty portal",
+                  figure_path, portal::kFigureSize);
+    }
+  } else if (REXCVAR_GET(portal_test_figure)) {
     software->PlaceFigure(0, portal::FigureData{});
     REXLOG_WARN("Portal: placed an all-zero test figure in slot 0");
   }
@@ -97,6 +114,12 @@ REX_HOOK_RAW(sub_82403C28) {
   PPCContext init_ctx = ctx;
   __imp__sub_82403B18(init_ctx, base);
 
-  if (auto report = ReportFromFrame(base + ctx.r4.u32)) portal->Write(*report);
+  if (auto report = ReportFromFrame(base + ctx.r4.u32)) {
+    // LED updates ('C') arrive ~10 times a second; leave them out. Use --log_level debug to see the rest.
+    if ((*report)[0] != 'C') {
+      REXLOG_DEBUG("Portal write: {:02x} {:02x} {:02x}", (*report)[0], (*report)[1], (*report)[2]);
+    }
+    portal->Write(*report);
+  }
   ctx.r3.u64 = 1;
 }

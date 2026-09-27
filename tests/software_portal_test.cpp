@@ -104,7 +104,7 @@ int main() {
     SoftwarePortal p;
     CHECK(p.PlaceFigure(0, pattern()));
     CHECK(slot_state(p.Read(), 0) == 0);
-    p.Write(Cmd({'A', 0x00}));
+    p.Write(Cmd({'A', 0x01}));
     p.Read();  // the 'A' reply
     for (int i = 0; i < 8; ++i) CHECK(slot_state(p.Read(), 0) == 3);
     CHECK(slot_state(p.Read(), 0) == 1);
@@ -114,7 +114,7 @@ int main() {
   // A figure placed after activation goes straight to "added". Other slots stay empty.
   {
     SoftwarePortal p;
-    p.Write(Cmd({'A', 0x00}));
+    p.Write(Cmd({'A', 0x01}));
     p.Read();
     CHECK(p.PlaceFigure(3, pattern()));
     Report s = p.Read();
@@ -211,7 +211,7 @@ int main() {
     SoftwarePortal p;
     CHECK(!p.RemoveFigure(0));
     p.PlaceFigure(0, pattern());
-    p.Write(Cmd({'A', 0x00}));
+    p.Write(Cmd({'A', 0x01}));
     p.Read();
     for (int i = 0; i < 10; ++i) p.Read();  // settle to ready
     CHECK(p.HasFigure(0));
@@ -225,11 +225,53 @@ int main() {
   // Slot 3's state uses bits 6-7 of the status word.
   {
     SoftwarePortal p;
-    p.Write(Cmd({'A', 0x00}));
+    p.Write(Cmd({'A', 0x01}));
     p.Read();
     p.PlaceFigure(3, pattern());
     Report s = p.Read();
     CHECK((s[1] & 0xC0) == 0xC0);
+  }
+
+  // A repeated 'A 01' while the portal is already active must NOT re-announce figures. The game
+  // sends it about every 10 seconds; re-announcing made the figure look taken off and put back.
+  {
+    SoftwarePortal p;
+    p.PlaceFigure(0, pattern());
+    p.Write(Cmd({'A', 0x00}));
+    p.Write(Cmd({'A', 0x01}));
+    p.Read();
+    p.Read();  // the two 'A' replies
+    for (int i = 0; i < 12; ++i) p.Read();  // added, then settled to ready
+    CHECK(slot_state(p.Read(), 0) == 1);
+    for (int repeat = 0; repeat < 3; ++repeat) {
+      p.Write(Cmd({'A', 0x01}));
+      CHECK(p.Read()[0] == 0x41);  // the reply
+      for (int i = 0; i < 12; ++i) CHECK(slot_state(p.Read(), 0) == 1);  // still ready, never "added"
+    }
+    // The figure is unchanged and still readable.
+    p.Write(Cmd({'Q', 0x00, 0x01}));
+    CHECK(p.Read()[1] == 0x10);
+  }
+
+  // 'A 00' deactivates: no slot states and the active flag clear. A later 'A 01' announces figures
+  // again, once.
+  {
+    SoftwarePortal p;
+    p.PlaceFigure(0, pattern());
+    p.Write(Cmd({'A', 0x01}));
+    p.Read();
+    for (int i = 0; i < 12; ++i) p.Read();  // ready
+    p.Write(Cmd({'A', 0x00}));
+    CHECK(p.Read()[0] == 0x41);
+    Report off = p.Read();
+    CHECK(off[0] == 0x53);
+    CHECK(off[6] == 0x00);  // inactive
+    CHECK(slot_state(off, 0) == 0);
+    CHECK(p.HasFigure(0));  // the figure itself is still there
+    p.Write(Cmd({'A', 0x01}));
+    p.Read();
+    for (int i = 0; i < 8; ++i) CHECK(slot_state(p.Read(), 0) == 3);
+    CHECK(slot_state(p.Read(), 0) == 1);
   }
 
   // The overlay thread and the game thread use the portal at the same time.

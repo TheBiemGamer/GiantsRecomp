@@ -65,3 +65,9 @@ The throwaway spike was replaced by `SoftwarePortal` and the hooks in `src/hooks
 - **`--portal_test_figure`:** the game reads the figure and shows "A toy on the Portal of Power has a problem." The all-zero data is rejected, so playing needs valid figure data (milestone 5).
 
 No crashes or `FATAL` lines in any of the four logs.
+
+## Real figure dumps, and the activate command (milestone 5 proof of concept)
+
+- A raw 1024-byte dump of a real figure, served to the game unchanged through `Q` replies, is accepted. Tree Rex (Giants) loaded into Story mode and the first level. No tag crypto or checksum code was needed for this. The dump files have a valid block-0 checksum and a plausible figure ID at `0x10` (little-endian).
+- The game sends `A 01` (activate) about **every 10 seconds** while the portal is already active. The first version of `SoftwarePortal` announced every present figure as "added" on each `A`, so the game re-read all 64 blocks after each one and the figure looked taken off and put straight back. A figure must be announced only when the portal goes from inactive to active. `A 00` deactivates. With that change the flicker is gone.
+- The game **writes** to the figure: `W` for block 8 (`57 10 08 ...`) followed by a `Q` read of the same block. The portal stores it in memory; nothing is saved back to the dump file yet.

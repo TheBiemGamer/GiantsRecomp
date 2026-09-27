@@ -24,16 +24,25 @@ void SoftwarePortal::Write(const Report& in) {
     case 'R':  // ready
       replies_.push_back(MakeReport({0x52, 0x02, 0x1B}));
       break;
-    case 'A':  // activate
-      active_ = true;
-      for (Slot& s : slots_) {
-        if (s.present) {
-          s.state = SlotState::kAdded;
-          s.reports_left = kAddedReports;
+    case 'A': {  // activate (argument != 0) or deactivate (argument == 0)
+      const bool activate = in[1] != 0;
+      if (activate && !active_) {
+        // Figures are announced when the portal goes from inactive to active. The game repeats
+        // 'A 01' about every 10 seconds while it is already active; announcing again then made
+        // every figure look taken off and put straight back.
+        for (Slot& s : slots_) {
+          if (s.present) {
+            s.state = SlotState::kAdded;
+            s.reports_left = kAddedReports;
+          }
         }
+      } else if (!activate) {
+        for (Slot& s : slots_) s.state = SlotState::kEmpty;  // figures stay; they are just not reported
       }
+      active_ = activate;
       replies_.push_back(MakeReport({0x41, in[1], 0xFF, 0x77}));
       break;
+    }
     case 'M':  // version
       replies_.push_back(MakeReport({0x4D, in[1], 0x00, 0x19}));
       break;
