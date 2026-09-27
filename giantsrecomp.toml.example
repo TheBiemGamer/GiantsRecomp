@@ -5,6 +5,18 @@
 # blank. Recommended until the underlying cause is fixed (see docs/investigation/boot-issues.md).
 gpu_allow_invalid_fetch_constants = true
 
+# Caps the host frame rate to this many FPS. 0 (the default) is unlimited.
+# frame_rate_limit = 60
+
+# Supersamples the internal render resolution by this factor (1-8) before downscaling to your
+# window/monitor -- higher looks sharper at a real GPU cost. 1 (the default) is no scaling.
+# resolution_scale = 2
+
+# Sets both the guest video mode and the startup window size together, e.g. for an ultrawide
+# monitor. Skylanders Giants wasn't built for anything but 16:9, so HUD/FOV behavior at other
+# aspect ratios is untested -- try it and see.
+# resolution = "3440x1440"
+
 # "software" uses the virtual portal; "none" disables it (the game then says it can't find one).
 portal_mode = "software"
 

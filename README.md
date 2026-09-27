@@ -82,6 +82,9 @@ Copy [`giantsrecomp.toml.example`](giantsrecomp.toml.example) next to `giantreco
 - `portal_figure`: puts one of your own figure dumps on the portal at startup (slot 0). **The game's changes to the figure are saved back to this exact file as you play**, the same as a real portal would. Use a copy if you want to keep the original untouched.
 - `gpu_allow_invalid_fetch_constants`: works around a GPU quirk that can otherwise make parts of the scene, or the whole screen, render blank. Recommended until the underlying cause is fixed (see `docs/investigation/boot-issues.md`).
 - `user_data_root`: where saves, achievements, shader cache, and the default figures folder live. Leave empty (the default) to use `Documents\giantsrecomp`.
+- `frame_rate_limit`: caps the host frame rate to this many FPS. `0` (the default) is unlimited.
+- `resolution_scale`: supersamples the internal render resolution by this factor (`1`-`8`) before downscaling to your window/monitor — sharper, at a real GPU cost. `1` (the default) is no scaling.
+- `resolution`: sets both the guest video mode and the startup window size together, e.g. `"3440x1440"` for an ultrawide monitor. Confirmed working — full-width 3D scene, no letterboxing — though Giants wasn't built for anything but 16:9, so HUD-heavy screens haven't been exhaustively checked.
 
 Any setting can still be passed as a command-line flag instead (`--portal_mode software`), which overrides whatever the settings file has. One exception: `--game_data_root` (where `rom\` lives) can't be set from the settings file — it's read before the file loads — but it already defaults to `rom` next to the executable, so you only need the flag if your dump lives somewhere else.
 
