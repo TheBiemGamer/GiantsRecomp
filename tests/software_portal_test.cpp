@@ -1,6 +1,8 @@
 #include <atomic>
 #include <chrono>
+#include <filesystem>
 #include <initializer_list>
+#include <optional>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -276,21 +278,31 @@ int main() {
     CHECK(slot_state(p.Read(), 0) == 1);
   }
 
-  // SetWriteCallback fires with (slot, full figure data) exactly when a 'W' actually writes, and
-  // not for out-of-range blocks or empty slots. Removing the callback stops further notifications.
+  // SetWriteCallback fires with (slot, full figure data, source path) exactly when a 'W' actually
+  // writes, and not for out-of-range blocks or empty slots. Removing the callback stops further
+  // notifications. A figure placed with no source (matching --portal_test_figure) gives nullopt.
   {
     SoftwarePortal p;
     p.PlaceFigure(2, pattern());
-    std::vector<std::pair<int, FigureData>> calls;
-    p.SetWriteCallback([&](int slot, const FigureData& data) { calls.emplace_back(slot, data); });
+    struct Call {
+      int slot;
+      FigureData data;
+      std::optional<std::filesystem::path> source;
+    };
+    std::vector<Call> calls;
+    p.SetWriteCallback([&](int slot, const FigureData& data,
+                          const std::optional<std::filesystem::path>& source) {
+      calls.push_back({slot, data, source});
+    });
 
     Report w = Cmd({'W', 0x02, 0x03});
     for (size_t i = 0; i < kBlockSize; ++i) w[3 + i] = static_cast<uint8_t>(0x50 + i);
     p.Write(w);
     p.Read();  // the reply
     CHECK(calls.size() == 1);
-    CHECK(calls[0].first == 2);
-    CHECK(calls[0].second[3 * kBlockSize] == 0x50);
+    CHECK(calls[0].slot == 2);
+    CHECK(calls[0].data[3 * kBlockSize] == 0x50);
+    CHECK(!calls[0].source.has_value());
 
     Report bad = w;
     bad[2] = 64;  // out of range: no callback
@@ -308,6 +320,48 @@ int main() {
     p.Write(w);
     p.Read();
     CHECK(calls.size() == 1);
+  }
+
+  // Swapping a slot's figure: the source path a write saves to always matches the figure actually
+  // live in the slot, because PlaceFigure sets the data and its source together under one lock.
+  // (A fresh review found that portal_hook.cpp previously tracked the source in a *second*,
+  // separately-locked map, updated after PlaceFigure returned — a window where a concurrent write
+  // could be attributed to the figure that used to be in the slot, corrupting the wrong file.)
+  {
+    SoftwarePortal p;
+    std::vector<std::optional<std::filesystem::path>> sources_seen;
+    p.SetWriteCallback([&](int, const FigureData&, const std::optional<std::filesystem::path>& source) {
+      sources_seen.push_back(source);
+    });
+    const std::filesystem::path path_a = "figure_a.dump";
+    const std::filesystem::path path_b = "figure_b.dump";
+    Report w = Cmd({'W', 0x00, 0x01});
+
+    p.PlaceFigure(0, pattern(), path_a);
+    p.Write(w);
+    p.Read();
+    CHECK(sources_seen.size() == 1);
+    CHECK(sources_seen[0] == path_a);
+
+    p.PlaceFigure(0, pattern(), path_b);  // swap, no explicit Remove first
+    p.Write(w);
+    p.Read();
+    CHECK(sources_seen.size() == 2);
+    CHECK(sources_seen[1] == path_b);  // never path_a
+
+    p.PlaceFigure(0, pattern());  // swap to a figure with no source
+    p.Write(w);
+    p.Read();
+    CHECK(sources_seen.size() == 3);
+    CHECK(!sources_seen[2].has_value());
+
+    p.PlaceFigure(0, pattern(), path_a);
+    p.RemoveFigure(0);
+    p.PlaceFigure(0, pattern(), path_b);
+    p.Write(w);
+    p.Read();
+    CHECK(sources_seen.size() == 4);
+    CHECK(sources_seen[3] == path_b);
   }
 
   // The overlay thread and the game thread use the portal at the same time.

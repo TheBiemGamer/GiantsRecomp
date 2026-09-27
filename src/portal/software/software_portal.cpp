@@ -18,9 +18,17 @@ Report MakeReport(std::initializer_list<uint8_t> bytes) {
 
 }  // namespace
 
+namespace {
+struct WriteEvent {
+  int slot;
+  FigureData data;
+  std::optional<std::filesystem::path> source;
+};
+}  // namespace
+
 void SoftwarePortal::Write(const Report& in) {
-  std::optional<std::pair<int, FigureData>> written;
-  std::function<void(int, const FigureData&)> callback;
+  std::optional<WriteEvent> written;
+  std::function<void(int, const FigureData&, const std::optional<std::filesystem::path>&)> callback;
   {
     std::lock_guard<std::mutex> lock(mu_);
     switch (in[0]) {
@@ -69,7 +77,7 @@ void SoftwarePortal::Write(const Report& in) {
         if (s.present && block < kBlockCount) {
           out[1] |= 0x10;
           std::copy_n(in.begin() + 3, kBlockSize, s.data.begin() + block * kBlockSize);
-          written = std::make_pair(static_cast<int>(slot), s.data);
+          written = WriteEvent{static_cast<int>(slot), s.data, s.source};
         }
         replies_.push_back(out);
         break;
@@ -83,7 +91,7 @@ void SoftwarePortal::Write(const Report& in) {
     // file I/O and must never run with the portal's lock held.
     if (written) callback = on_write_;
   }
-  if (written && callback) callback(written->first, written->second);
+  if (written && callback) callback(written->slot, written->data, written->source);
 }
 
 Report SoftwarePortal::Read() {
@@ -117,12 +125,14 @@ Report SoftwarePortal::StatusReportLocked() {
   return r;
 }
 
-bool SoftwarePortal::PlaceFigure(int slot, const FigureData& data) {
+bool SoftwarePortal::PlaceFigure(int slot, const FigureData& data,
+                                 std::optional<std::filesystem::path> source) {
   if (slot < 0 || slot >= kMaxFigures) return false;
   std::lock_guard<std::mutex> lock(mu_);
   Slot& s = slots_[slot];
   s.present = true;
   s.data = data;
+  s.source = std::move(source);
   if (active_) {
     s.state = SlotState::kAdded;
     s.reports_left = kAddedReports;
@@ -139,6 +149,7 @@ bool SoftwarePortal::RemoveFigure(int slot) {
   if (!s.present) return false;
   s.present = false;
   s.data = FigureData{};
+  s.source.reset();
   s.state = active_ ? SlotState::kRemoving : SlotState::kEmpty;
   return true;
 }
@@ -149,7 +160,9 @@ bool SoftwarePortal::HasFigure(int slot) const {
   return slots_[slot].present;
 }
 
-void SoftwarePortal::SetWriteCallback(std::function<void(int, const FigureData&)> callback) {
+void SoftwarePortal::SetWriteCallback(
+    std::function<void(int, const FigureData&, const std::optional<std::filesystem::path>&)>
+        callback) {
   std::lock_guard<std::mutex> lock(mu_);
   on_write_ = std::move(callback);
 }

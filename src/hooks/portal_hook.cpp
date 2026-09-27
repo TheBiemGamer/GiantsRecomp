@@ -1,10 +1,8 @@
 #include "hooks/portal_hook.h"
 
-#include <array>
 #include <atomic>
 #include <cstdint>
 #include <filesystem>
-#include <mutex>
 #include <optional>
 #include <string>
 
@@ -35,12 +33,6 @@ namespace {
 std::atomic<giantrecomp::portal::PortalDevice*> g_portal{nullptr};
 std::atomic<giantrecomp::portal::SoftwarePortal*> g_software_portal{nullptr};
 
-// Which file each slot's figure was loaded from, so the write callback (registered once, below)
-// knows where to save a given slot's changes. Empty (nullopt) for a slot that was never loaded
-// from a file (for example --portal_test_figure's all-zero figure).
-std::mutex g_slot_paths_mu;
-std::array<std::optional<std::filesystem::path>, giantrecomp::portal::kMaxFigures> g_slot_paths;
-
 // portal_figure/portal_figures_dir arrive as UTF-8; convert explicitly so non-ANSI characters
 // survive (path::string() would throw for characters outside the ANSI code page).
 std::filesystem::path Utf8ToPath(const std::string& utf8) {
@@ -65,14 +57,13 @@ void InstallConfiguredPortal() {
   }
 
   auto* software = new portal::SoftwarePortal();  // intentionally never freed, see the header
-  software->SetWriteCallback([](int slot, const portal::FigureData& data) {
-    std::optional<std::filesystem::path> path;
-    {
-      std::lock_guard<std::mutex> lock(g_slot_paths_mu);
-      if (slot >= 0 && slot < portal::kMaxFigures) path = g_slot_paths[slot];
-    }
-    if (!path) return;  // this slot's figure did not come from a file
-    if (portal::SaveFigureFileAtomic(*path, data)) {
+  // The source path each slot's figure was loaded from (if any) is tracked by SoftwarePortal
+  // itself, set atomically with the figure's data — see PlaceFigure's doc comment for why that
+  // matters. This callback just saves whatever source it is handed.
+  software->SetWriteCallback([](int slot, const portal::FigureData& data,
+                                const std::optional<std::filesystem::path>& source) {
+    if (!source) return;  // this slot's figure did not come from a file
+    if (portal::SaveFigureFileAtomic(*source, data)) {
       REXLOG_INFO("Portal: saved changes back to slot {}'s figure file", slot);
     } else {
       REXLOG_WARN("Portal: could not save changes back to slot {}'s figure file", slot);
@@ -104,23 +95,13 @@ bool PlaceFigureFromFile(int slot, const std::filesystem::path& path) {
   if (!software) return false;
   auto figure = portal::LoadFigureFile(path);
   if (!figure) return false;
-  if (!software->PlaceFigure(slot, *figure)) return false;
-  {
-    std::lock_guard<std::mutex> lock(g_slot_paths_mu);
-    if (slot >= 0 && slot < portal::kMaxFigures) g_slot_paths[slot] = path;
-  }
-  return true;
+  return software->PlaceFigure(slot, *figure, path);
 }
 
 bool RemoveFigureFromSlot(int slot) {
   portal::SoftwarePortal* software = g_software_portal.load();
   if (!software) return false;
-  const bool removed = software->RemoveFigure(slot);
-  {
-    std::lock_guard<std::mutex> lock(g_slot_paths_mu);
-    if (slot >= 0 && slot < portal::kMaxFigures) g_slot_paths[slot].reset();
-  }
-  return removed;
+  return software->RemoveFigure(slot);
 }
 
 portal::SoftwarePortal* GetSoftwarePortal() { return g_software_portal.load(); }

@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <deque>
+#include <filesystem>
 #include <functional>
 #include <mutex>
 #include <optional>
@@ -19,15 +20,25 @@ class SoftwarePortal : public PortalDevice {
   Report Read() override;
 
   // Control API. Thread-safe.
-  bool PlaceFigure(int slot, const FigureData& data);  // false if `slot` is out of range
-  bool RemoveFigure(int slot);                         // false if out of range or empty
+  //
+  // `source`, if given, is remembered alongside `data` under the same lock, so a write callback
+  // fired for this slot always sees the source that matches whichever figure is actually live at
+  // that instant — even across a swap (PlaceFigure called again on an already-present slot) with
+  // no separate, independently-lockable bookkeeping that could ever fall out of step with it.
+  bool PlaceFigure(int slot, const FigureData& data,
+                   std::optional<std::filesystem::path> source = std::nullopt);  // false if out of range
+  bool RemoveFigure(int slot);  // false if out of range or empty; also forgets the source
   bool HasFigure(int slot) const;
   std::optional<FigureData> Figure(int slot) const;
 
   // Called after a successful figure write ('W' to a present slot and a valid block), with the
-  // slot index and the figure's full data at that point. Runs on the calling thread (whichever
-  // thread called Write()), outside the portal's lock. Pass nullptr to remove it.
-  void SetWriteCallback(std::function<void(int slot, const FigureData& data)> callback);
+  // slot index, the figure's full data at that point, and the source PlaceFigure was given for
+  // that slot (nullopt if none). Runs on the calling thread (whichever thread called Write()),
+  // outside the portal's lock. Pass nullptr to remove it.
+  void SetWriteCallback(
+      std::function<void(int slot, const FigureData& data,
+                         const std::optional<std::filesystem::path>& source)>
+          callback);
 
  private:
   enum class SlotState : uint8_t { kEmpty = 0, kReady = 1, kRemoving = 2, kAdded = 3 };
@@ -36,6 +47,7 @@ class SoftwarePortal : public PortalDevice {
     SlotState state = SlotState::kEmpty;
     int reports_left = 0;  // status reports still to show kAdded
     FigureData data{};
+    std::optional<std::filesystem::path> source;
   };
 
   Report StatusReportLocked();
@@ -45,7 +57,7 @@ class SoftwarePortal : public PortalDevice {
   std::array<Slot, kMaxFigures> slots_{};
   bool active_ = false;
   uint8_t counter_ = 0;
-  std::function<void(int, const FigureData&)> on_write_;
+  std::function<void(int, const FigureData&, const std::optional<std::filesystem::path>&)> on_write_;
 };
 
 }  // namespace giantrecomp::portal

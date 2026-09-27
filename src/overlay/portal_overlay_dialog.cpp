@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <filesystem>
+#include <system_error>
 
 #include <imgui.h>
 #include <rex/cvar.h>
@@ -81,7 +83,17 @@ void PortalOverlayDialog::OnDraw(ImGuiIO& io) {
   if (ImGui::Button("Rescan")) Rescan();
 
   if (entries_.empty()) {
-    ImGui::TextWrapped("No .dump files found under '%s'.", figures_dir_at_last_scan_.c_str());
+    // Distinguish a typo'd or missing folder from a folder that is genuinely just empty, rather
+    // than showing the same "no .dump files" message for both.
+    std::error_code ec;
+    const auto dir_path = Utf8ToPath(figures_dir_at_last_scan_);
+    if (!std::filesystem::exists(dir_path, ec) || ec) {
+      ImGui::TextWrapped("The folder '%s' does not exist.", figures_dir_at_last_scan_.c_str());
+    } else if (!std::filesystem::is_directory(dir_path, ec) || ec) {
+      ImGui::TextWrapped("'%s' is not a folder.", figures_dir_at_last_scan_.c_str());
+    } else {
+      ImGui::TextWrapped("No .dump files found under '%s'.", figures_dir_at_last_scan_.c_str());
+    }
     ImGui::End();
     return;
   }
