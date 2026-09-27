@@ -12,8 +12,10 @@
 
 #include <rex/logging.h>
 #include <rex/rex_app.h>
+#include <rex/ui/keybinds.h>
 
 #include "hooks/portal_hook.h"
+#include "overlay/portal_overlay_dialog.h"
 #include "xex_verify.h"
 
 class GiantrecompApp : public rex::ReXApp {
@@ -29,7 +31,6 @@ class GiantrecompApp : public rex::ReXApp {
   // Override virtual hooks for customization:
   // void OnLoadXexImage(std::string& xex_image) override {}
   // void OnPostLoadXexImage() override {}
-  // void OnCreateDialogs(rex::ui::ImGuiDrawer* drawer) override {}
   // std::unique_ptr<rex::ui::ImGuiDialog> CreateAchievementsOverlay() override;
   // std::unique_ptr<rex::ui::AchievementNotificationDialog>
   // CreateAchievementNotificationDialog() override;
@@ -41,6 +42,17 @@ class GiantrecompApp : public rex::ReXApp {
   }
 
   void OnPostSetup() override { giantrecomp::InstallConfiguredPortal(); }
+
+  void OnCreateDialogs(rex::ui::ImGuiDrawer* drawer) override {
+    rex::ui::RegisterBind("bind_portal_overlay", "F6", "Toggle the portal figure picker",
+                          [this, drawer] {
+                            if (portal_overlay_) {
+                              portal_overlay_.reset();
+                            } else {
+                              portal_overlay_ = std::make_unique<giantrecomp::PortalOverlayDialog>(drawer);
+                            }
+                          });
+  }
 
   void OnConfigurePaths(rex::PathConfig& paths) override { game_data_root_ = paths.game_data_root; }
 
@@ -68,4 +80,5 @@ class GiantrecompApp : public rex::ReXApp {
   }
 
   std::filesystem::path game_data_root_;
+  std::unique_ptr<giantrecomp::PortalOverlayDialog> portal_overlay_;
 };
