@@ -36,3 +36,13 @@ Without `rexglue_setup_target(... GPU_PLUGINS xenos)` and `gpu_plugin = "xenos"`
 ## Tooling used (not committed)
 
 Debug helpers lived in the git-ignored `logs/` folder: a script that boots the game, reads the fatal address, sizes the function from a dump of the loaded guest image and adds the `[functions]` entry, and a script that finds truncated jump tables. Guest crashes were located by logging the faulting RVA and resolving it with `llvm-symbolizer`. The dumping and crash-logging code was temporary and removed.
+
+## More virtual-only functions, found once the portal worked (milestone 4)
+
+With a portal answering, the game runs code that never ran before, and each new path hit another `Call to invalid or unregistered function` fatal. `config/default.toml` now has 75 `[functions]` entries in total. A batch of them came from scanning the loaded image for pointers into code that are not function starts. Rules learned the hard way:
+
+- **Data-table pointers** (virtual method tables) were reliable once sized correctly. A function's size has to follow forward jumps to non-function addresses, or codegen rejects the result with "target not in any function".
+- **Import thunks** (`0x8261B000` and up) also show up as pointers into code. They are imports, not game functions, and registering them causes undefined-symbol link errors.
+- **Jump tables** sit inline in the code range, and their entries look like code addresses. Candidates whose first word is itself a code address must be skipped.
+- **Pointers built in code** (`lis` + `addi`/`ori`) produced many false positives, mostly labels in the middle of large functions. Registering one splits the containing function and breaks its branches (`Unresolved branch from ... to ...`). Only candidates that are not strictly inside a function that has unwind (PDATA) information were kept.
+- Entries in the config must not overlap; the loader refuses the whole manifest otherwise.
