@@ -22,6 +22,11 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/hidapi/CMakeLists.txt")
     message(FATAL_ERROR "thirdparty/hidapi is missing. Run: git submodule update --init --recursive")
 endif()
 set(HIDAPI_WITH_TESTS OFF CACHE BOOL "" FORCE)
+# Force static explicitly: this runs before generated/rexglue.cmake pulls in the SDK's own
+# thirdparty/CMakeLists.txt, which is what normally forces BUILD_SHARED_LIBS off project-wide. On
+# a first configure (empty cache) that ordering means hidapi's own default (ON) wins and it builds
+# as a DLL -- an extra runtime dependency nobody using portal_mode other than "usb" asked for.
+set(BUILD_SHARED_LIBS OFF)
 add_subdirectory(thirdparty/hidapi)
 
 include(generated/rexglue.cmake)

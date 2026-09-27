@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <utility>
 
@@ -17,8 +18,9 @@ inline constexpr std::pair<uint16_t, uint16_t> kKnownPortals[] = {
 };
 
 // A real, physical Portal of Power, opened over USB HID via hidapi. Relays the game's 32-byte
-// reports to and from the device's real 64-byte reports (see usb_report_codec.h) -- the command
-// protocol itself needs no translation (docs/investigation/portal-protocol.md).
+// reports to and from the device's real reports (see usb_report_codec.h for the exact sizing --
+// verified 32 bytes for the Wii U portal, not the 64 this code is sized to tolerate) -- the
+// command protocol itself needs no translation (docs/investigation/portal-protocol.md).
 class UsbPortal final : public PortalDevice {
  public:
   // Opens the first connected device matching kKnownPortals, in the order listed. Check IsOpen()
@@ -37,6 +39,10 @@ class UsbPortal final : public PortalDevice {
 
  private:
   hid_device* device_ = nullptr;
+  // Logs at most once (per direction) so a stuck/unplugged device can't flood the log at the
+  // game's polling rate -- see docs/superpowers/specs/2026-09-27-usb-portal-design.md §5.
+  std::atomic<bool> write_error_logged_{false};
+  std::atomic<bool> read_error_logged_{false};
 };
 
 }  // namespace giantrecomp::portal

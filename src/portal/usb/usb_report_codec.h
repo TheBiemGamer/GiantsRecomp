@@ -8,9 +8,16 @@
 
 namespace giantrecomp::portal {
 
-// The real portal's USB HID reports are 64 bytes; PortalDevice::Report is 32 (matching the
-// Xbox 360 console-side buffer the game itself uses -- see xbox_frame.h). The command protocol is
-// identical either way (docs/investigation/portal-protocol.md); only the size differs.
+// A conservative upper bound for the real portal's USB HID report size, oversized on purpose.
+// PortalDevice::Report is 32 (matching the Xbox 360 console-side buffer the game itself uses --
+// see xbox_frame.h). The command protocol is identical either way
+// (docs/investigation/portal-protocol.md); only the size differs, and the real size is
+// device-dependent -- verified 32 bytes both ways for the Wii U portal (1430:0150,
+// docs/investigation/portal-protocol.md's "Real USB portal" section), unconfirmed for the
+// whitelisted Xbox 360 variant (1430:1F17). Oversizing the write buffer relies on Windows' HID
+// stack truncating hid_write() to the device's real OutputReportByteLength rather than failing;
+// the read path handles any real size up to this bound correctly regardless, since
+// DecodeInputReport works from hid_read()'s actual returned byte count, not this constant.
 constexpr size_t kDeviceReportSize = 64;
 
 // hid_write() always requires a leading HID report-ID byte before the report data, even for a

@@ -18,7 +18,9 @@
 #include "portal/xbox_frame.h"
 
 REXCVAR_DEFINE_STRING(portal_mode, "software", "Portal",
-                      "Portal backend: 'software', 'usb', or 'none'");
+                      "Portal backend: 'software', 'usb' (experimental -- opens but the game does "
+                      "not yet recognize the portal as present, see "
+                      "docs/investigation/portal-protocol.md), or 'none'");
 REXCVAR_DEFINE_BOOL(portal_test_figure, false, "Portal",
                     "Development: put an all-zero figure on the portal (the game reports it as a "
                     "problem toy)");
@@ -75,7 +77,8 @@ void InstallConfiguredPortal(const std::filesystem::path& default_figures_dir) {
     // handle (used by GetSoftwarePortal() for the figure-picker overlay), and there is no
     // software portal active in this mode.
     g_portal.store(usb);
-    REXLOG_INFO("Portal: usb");
+    REXLOG_WARN("Portal: usb (experimental -- opened the device, but the game is not yet known "
+                "to recognize it as present; see docs/investigation/portal-protocol.md)");
     return;
   }
 
