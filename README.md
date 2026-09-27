@@ -68,19 +68,24 @@ The second command converts *your* `default.xex` into C++ code on your own machi
 Run the game from the project folder (`out\build\win-amd64-release` if you built Release, `win-amd64-debug` otherwise):
 
 ```
-out\build\win-amd64-release\giantrecomp.exe --game_data_root rom --portal_figure "C:\path\to\Tree Rex.dump" --gpu_allow_invalid_fetch_constants
+out\build\win-amd64-release\giantrecomp.exe
 ```
 
-- Press **A** at the title screen, then choose **Story** and a slot marked **NEW**. To quit, close the window.
-- `--portal_figure <file>` puts one of your figure dumps on the virtual portal. **The game's changes to the figure are saved back to this exact file as you play**, the same as a real portal would. Use a copy if you want to keep the original untouched.
-- `--gpu_allow_invalid_fetch_constants` works around a GPU quirk that can otherwise make parts of the scene, or the whole screen, render blank. Recommended until the underlying cause is fixed (see `docs/investigation/boot-issues.md`).
-- `--portal_mode software` (the default) uses the virtual portal. `--portal_mode none` uses no portal, and the game then says it can't find one.
-- `--portal_test_figure` puts an all-zero test figure on the portal. The game reports it as a problem toy.
-- `--portal_figures_dir <folder>` points the **in-game figure picker** at your dumps: press **F6** to open it (mouse only for now), filter by name, and click **Place** or **Remove** for any of the portal's 16 slots. Any figure placed this way saves its progress back to its file too. If you don't pass this, it defaults to a `figures` folder next to your saves (see below), which starts empty until figure creation exists.
+That's it if `rom\default.xex` exists — no flags needed for the common case. Press **A** at the title screen, then choose **Story** and a slot marked **NEW**. To quit, close the window.
 
-**Tip:** to avoid typing this, save the command in a text file named `play.cmd` (start it with `cd /d` and the project folder) and double-click it.
+### Settings file
 
-Saves, achievements, shader cache, and the default figures folder live in `Documents\giantsrecomp` (created automatically the first time you run the game). Pass `--user_data_root <folder>` to use somewhere else instead.
+Copy [`giantsrecomp.toml.example`](giantsrecomp.toml.example) next to `giantrecomp.exe` and rename it to `giantsrecomp.toml` to change any of the following without typing flags every time (the in-game **Settings** overlay, **F4**, reads and writes this same file):
+
+- `portal_mode`: `"software"` (default) uses the virtual portal; `"none"` disables it and the game says it can't find one.
+- `portal_figures_dir`: the folder the in-game figure picker searches and creates new figures in. Press **F6** to open it (mouse only for now): browse your dumps, or create a new figure by name, grouped by game and release order. Leave empty (the default) to use a `figures` folder next to your saves.
+- `portal_figure`: puts one of your own figure dumps on the portal at startup (slot 0). **The game's changes to the figure are saved back to this exact file as you play**, the same as a real portal would. Use a copy if you want to keep the original untouched.
+- `gpu_allow_invalid_fetch_constants`: works around a GPU quirk that can otherwise make parts of the scene, or the whole screen, render blank. Recommended until the underlying cause is fixed (see `docs/investigation/boot-issues.md`).
+- `user_data_root`: where saves, achievements, shader cache, and the default figures folder live. Leave empty (the default) to use `Documents\giantsrecomp`.
+
+Any setting can still be passed as a command-line flag instead (`--portal_mode software`), which overrides whatever the settings file has. One exception: `--game_data_root` (where `rom\` lives) can't be set from the settings file — it's read before the file loads — but it already defaults to `rom` next to the executable, so you only need the flag if your dump lives somewhere else.
+
+`--portal_test_figure` (command line only, for development) puts an all-zero test figure on the portal; the game reports it as a problem toy.
 
 ## If something goes wrong
 

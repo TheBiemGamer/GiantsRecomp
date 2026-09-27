@@ -81,7 +81,15 @@ class GiantrecompApp : public rex::ReXApp {
                           });
   }
 
-  void OnConfigurePaths(rex::PathConfig& paths) override { game_data_root_ = paths.game_data_root; }
+  void OnConfigurePaths(rex::PathConfig& paths) override {
+    // game_data_root is read from the cvar registry before the config file loads (see
+    // ReXApp::SetupEnvironment), so --game_data_root can't be set via giantsrecomp.toml the way
+    // portal_mode etc. can. Defaulting to "rom" (relative to the working directory, matching every
+    // documented way of running this game) means most users need neither the flag nor a config
+    // entry for it.
+    if (paths.game_data_root.empty()) paths.game_data_root = "rom";
+    game_data_root_ = paths.game_data_root;
+  }
 
   void OnPostInitLogging() override {
     // ReXApp reports a missing --game_data_root itself when it builds the runtime.

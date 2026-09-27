@@ -1,0 +1,23 @@
+# Copy this file next to giantrecomp.exe and rename it to "giantsrecomp.toml" to configure the
+# game without command-line flags every time. Only include the settings you want to change --
+# anything left out keeps its default. Command-line flags still override whatever this file sets.
+# The in-game Settings overlay (F4) reads and writes this same file.
+
+# Works around a GPU quirk that can otherwise make parts of the scene, or the whole screen, render
+# blank. Recommended until the underlying cause is fixed (see docs/investigation/boot-issues.md).
+gpu_allow_invalid_fetch_constants = true
+
+# "software" uses the virtual portal; "none" disables it (the game then says it can't find one).
+portal_mode = "software"
+
+# Folder the in-game figure picker (F6) searches and creates new figures in. Leave empty (the
+# default) to use the standard "figures" folder next to your saves.
+portal_figures_dir = ""
+
+# Puts one of your own figure dumps on the portal at startup (slot 0). The game's changes save
+# back to this exact file as you play.
+# portal_figure = "C:\\path\\to\\Tree Rex.dump"
+
+# Where saves, achievements, shader cache, and the default figures folder live. Leave empty (the
+# default) to use Documents\giantsrecomp.
+# user_data_root = "C:\\path\\to\\folder"
