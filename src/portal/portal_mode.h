@@ -5,10 +5,10 @@
 
 namespace giantrecomp::portal {
 
-enum class PortalMode { kNone, kSoftware };
+enum class PortalMode { kNone, kSoftware, kUsb };
 
-// Accepts "none" or "software" (any case, surrounding whitespace ignored). Anything else, including
-// modes that do not exist yet, gives nullopt.
+// Accepts "none", "software", or "usb" (any case, surrounding whitespace ignored). Anything else,
+// including modes that do not exist, gives nullopt.
 std::optional<PortalMode> ParsePortalMode(std::string_view text);
 
 }  // namespace giantrecomp::portal

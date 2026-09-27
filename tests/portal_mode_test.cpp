@@ -10,8 +10,9 @@ int main() {
   CHECK(ParsePortalMode("  Software \t") == PortalMode::kSoftware);
   CHECK(ParsePortalMode("NONE") == PortalMode::kNone);
 
-  // Unknown values are rejected, including modes that are not implemented yet.
-  CHECK(!ParsePortalMode("usb").has_value());
+  CHECK(ParsePortalMode("usb") == PortalMode::kUsb);
+
+  // Unknown values are rejected.
   CHECK(!ParsePortalMode("").has_value());
   CHECK(!ParsePortalMode("   ").has_value());
   CHECK(!ParsePortalMode("banana").has_value());

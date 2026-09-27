@@ -16,6 +16,7 @@ std::optional<PortalMode> ParsePortalMode(std::string_view text) {
   }
   if (word == "none") return PortalMode::kNone;
   if (word == "software") return PortalMode::kSoftware;
+  if (word == "usb") return PortalMode::kUsb;
   return std::nullopt;
 }
 
