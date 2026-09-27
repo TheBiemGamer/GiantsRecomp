@@ -1,5 +1,9 @@
 # Giants Recompiled
 
+[![License: MIT](https://img.shields.io/github/license/TheBiemGamer/GiantsRecomp)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-informational)](#what-you-need)
+
+
 An unofficial PC port of the Xbox 360 version of Skylanders Giants, made by static recompilation with [ReXGlue](https://github.com/rexglue/rexglue-sdk). It support both the actual **portal of power** and a **virtual Portal of Power**, so you can play without the real toy hardware.
 
 This repository contains **no game code and no game data**. You need your own copy of the game.
