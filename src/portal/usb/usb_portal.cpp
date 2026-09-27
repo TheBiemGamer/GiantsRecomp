@@ -38,8 +38,7 @@ void UsbPortal::Write(const Report& report) {
   if (device_ == nullptr) return;
   // hid_send_output_report() sends via a HID SET_REPORT control transfer -- unlike hid_write(),
   // which prefers this device's interrupt OUT endpoint and is accepted at the transport level but
-  // silently discarded by its firmware (verified against real hardware; see
-  // docs/investigation/portal-protocol.md). Needs a leading report-ID byte (0, this device has no
+  // silently discarded by its firmware. Needs a leading report-ID byte (0, this device has no
   // numbered reports), so the buffer is one longer than the report itself.
   std::array<uint8_t, kReportSize + 1> buffer{};  // buffer[0] = report ID 0
   std::copy(report.begin(), report.end(), buffer.begin() + 1);
@@ -54,7 +53,7 @@ Report UsbPortal::Read() {
   Report report{};
   // A short timeout keeps this from blocking the game's polling thread indefinitely if the device
   // stops responding; an all-zero Report on timeout/failure is a shape the game already tolerates
-  // (see docs/investigation/portal-protocol.md's status-frame/idle-read notes).
+  // (docs/portal-protocol.md).
   const int bytes_read = hid_read_timeout(device_, report.data(), report.size(), 50);
   // 0 means "no report within the timeout", hidapi's normal outcome for an idle poll, not a
   // failure. -1 is the actual error indicator.
@@ -91,7 +90,7 @@ void UsbPortal::ObserveReply(const Report& report) {
   // 'S' status frame: 0x53, then 4 bytes of little-endian slot state (2 bits each, slot 0
   // lowest -- up to kMaxFigures slots, matching a real portal holding more than one figure at
   // once, e.g. Giants' 2-player co-op plus items), a counter, and an active flag
-  // (docs/investigation/portal-protocol.md).
+  // (docs/portal-protocol.md).
   if (report[0] == 0x53) {
     const uint32_t states = static_cast<uint32_t>(report[1]) | (static_cast<uint32_t>(report[2]) << 8) |
                             (static_cast<uint32_t>(report[3]) << 16) |

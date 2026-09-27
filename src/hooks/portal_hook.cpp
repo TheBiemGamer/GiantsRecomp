@@ -154,7 +154,8 @@ portal::UsbPortal* GetUsbPortal() { return g_usb_portal.load(); }
 }  // namespace giantrecomp
 
 // The game reads and writes its portal through two small recompiled wrappers (see
-// docs/investigation/portal-api.md and portal-protocol.md). Replace them when a portal is installed.
+// docs/architecture.md, "Hooking the game"; docs/portal-protocol.md). Replace them when a portal
+// is installed.
 REX_EXTERN(__imp__sub_82403B18);  // initializer: sets the "portal API available" flag
 REX_EXTERN(__imp__sub_82403BB8);  // read:  r3 = &bytes_read, r4 = &buffer_size, r5 = buffer
 REX_EXTERN(__imp__sub_82403C28);  // write: r4 = frame buffer

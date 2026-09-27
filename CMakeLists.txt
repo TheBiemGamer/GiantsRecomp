@@ -19,7 +19,7 @@ endif()
 # CMakeLists picks the right per-OS backend automatically -- on Windows this is the native HID
 # API, not libusb, so no WinUSB/Zadig driver replacement is needed. Commands go out via
 # hid_send_output_report() (a HID SET_REPORT control transfer), not hid_write() -- see
-# UsbPortal::Write and docs/investigation/portal-protocol.md for why that distinction matters.
+# UsbPortal::Write and docs/portal-protocol.md for why that distinction matters.
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/hidapi/CMakeLists.txt")
     message(FATAL_ERROR "thirdparty/hidapi is missing. Run: git submodule update --init --recursive")
 endif()

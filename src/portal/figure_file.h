@@ -26,8 +26,7 @@ uint16_t ReadFigureId(const FigureData& data);
 uint16_t ReadFigureVariant(const FigureData& data);
 
 // Builds a blank, valid figure for `id`/`variant`: correct manufacturer bytes, id, variant, CRC,
-// and Mifare sector-trailer access bits (see
-// docs/superpowers/specs/2026-09-27-figure-creation-design.md §3). The 4-byte serial is normally
+// and Mifare sector-trailer access bits (see docs/architecture.md, "Figures"). The 4-byte serial is normally
 // random; the explicit-serial overload exists so callers (tests) can get a deterministic result.
 FigureData CreateBlankFigure(uint16_t id, uint16_t variant);
 FigureData CreateBlankFigure(uint16_t id, uint16_t variant, std::array<uint8_t, 4> serial);

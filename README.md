@@ -1,6 +1,6 @@
 # Giants Recompiled
 
-An unofficial PC port of the Xbox 360 version of Skylanders Giants, made by static recompilation with [ReXGlue](https://github.com/rexglue/rexglue-sdk). It comes with a **virtual Portal of Power**, so you can play without the real toy hardware — or plug in a real one, since that's supported too.
+An unofficial PC port of the Xbox 360 version of Skylanders Giants, made by static recompilation with [ReXGlue](https://github.com/rexglue/rexglue-sdk). It support both the actual **portal of power** and a **virtual Portal of Power**, so you can play without the real toy hardware.
 
 This repository contains **no game code and no game data**. You need your own copy of the game.
 
@@ -12,22 +12,21 @@ This is a solo, for-fun project to see whether a static recompilation of Skyland
 
 **Works today**
 - The game starts, renders, plays sound, and plays through Story mode with a controller.
-- A virtual Portal of Power with your own figures on it, up to 16 at once (matching the real portal's slots). A menu (**F6**) lets you browse your `.dump` files and place or remove a figure in any slot at any time — no need to restart to swap figures. Progress on a figure (levelling up, upgrades) is saved back to its `.dump` file, so it carries over between play sessions.
-- A real, physical Portal of Power over USB (`portal_mode = "usb"`) — tested with a Wii U Traptanium portal, including figure recognition (confirmed with a real Skylander). No driver changes needed; it just needs to be plugged in. The figure picker overlay (**F6**) shows every detected figure's name when a USB portal is active. The Xbox 360 Traptanium portal is also whitelisted but untested — no such hardware to verify against yet.
+- A virtual Portal of Power with your own figures on it, up to 16 at once (matching the real portal's slots).
+- A real, physical Portal of Power over USB (`portal_mode = "usb"`) — tested with a Wii U Traptanium portal, including figure recognition (confirmed with a real Skylander).
 
 **Not yet**
-- It can be slow, especially in the everyday (Debug) build (see [Playing](#playing) for the faster Release build). Expect stutter the first time an effect appears in a scene; it should be smoother the second time. Cutscenes are the heaviest part and lag the most.
+- It can be slow, especially in the Debug build (see [Playing](#playing) for the faster Release build). Expect stutter the first time an effect appears in a scene; it should be smoother the second time. Cutscenes are the heaviest part and lag the most.
 - Keyboard and mouse. Use a controller.
 - Modes other than Story have not been tested.
 - **Linux builds and runs** (see [Setup](#setup)), but it's newer and rougher than the Windows build: it's noticeably slower than Windows even on the same hardware, and there's an unresolved rendering bug where the screen renders with an incorrect red tint from the title screen onward. On a laptop with both an integrated and a discrete GPU, also check the `vulkan_device` tip in [Settings file](#settings-file) — the automatic GPU pick has no preference for the discrete GPU and can end up on the weaker one. macOS has build presets but hasn't been tried by anyone.
 
 ## What you need
 
-1. **A 64-bit PC.** Windows 10 or 11 with a graphics card that supports DirectX 12 is the main target. Linux works too (see [Setup](#setup)) with a Vulkan 1.x capable GPU, but is newer and rougher — see the Linux note under [What works, and what doesn't](#what-works-and-what-doesnt).
+1. **A 64-bit PC.** Windows 10 or 11 with a graphics card that supports DirectX 12 is the main target. Linux works too (see [Setup](#setup)) with a Vulkan 1.x capable GPU, but is newer and rougher.
 2. **Your own copy of the game:** the Xbox 360 disc of Skylanders: Giants, **version 1.0 (the USA and Europe release)**, extracted to a folder on your PC (for example with a disc-extraction tool such as `extract-xiso` or `xdvdfs`). The program checks the game file against a fingerprint at startup and refuses to run any other version.
 3. **A controller.** An Xbox controller works.
-4. **Figure dumps (optional but recommended):** raw 1024-byte `.dump` files of your own figures, made with a real portal and a dumping tool. They are not included here.
-5. **Build tools** (see the setup below): on Windows, Visual Studio 2022 with the C++ tools, CMake, Ninja and Git. On Linux, clang 20+, CMake, Ninja and Git. [`just`](https://github.com/casey/just) is optional on either platform but simplifies the commands below a lot.
+4. **Build tools** (see the setup below): on Windows, Visual Studio 2022 with the C++ tools, CMake, Ninja and Git. On Linux, clang 20+, CMake, Ninja and Git. [`just`](https://github.com/casey/just) is optional on either platform but simplifies the commands below a lot.
 
 ## Setup
 
@@ -67,9 +66,8 @@ The second command converts *your* `default.xex` into C++ code on your own machi
 
 **Optional, but recommended for actually playing:** repeat the same four steps with `win-amd64-release` instead of `win-amd64-debug`. The Release build is optimized and noticeably smoother; use Debug only if something crashes and you want to capture more detail for a bug report.
 
-### Linux
+### Linux (experimental)
 
-Newer and rougher than Windows — see the Linux note under [What works, and what doesn't](#what-works-and-what-doesnt) before investing time here.
 
 **1. Install the build tools.** You need clang 20 or newer (both `clang-20` and `clang++-20` on `PATH`), CMake 3.25 or newer, Ninja and Git — e.g. on Arch, `sudo pacman -S clang20 cmake ninja git`. Some distros' packages don't add the versioned `clang-20`/`clang++-20` names to `PATH` even though they install the binaries (Arch's `clang20` package is one; check where it put `clang++` and symlink `clang-20`/`clang++-20` onto it somewhere on `PATH`, such as `~/.local/bin`, if `which clang-20` comes up empty).
 
@@ -82,7 +80,8 @@ cd GiantsRecomp
 
 If you already cloned without `--recursive`, run `git submodule update --init --recursive`.
 
-**3. Put your game files in place.** Copy the extracted disc into the `rom` folder so that `rom/default.xex` exists. That folder is ignored by git.
+**3. Put your game files in place.** Copy the extracted disc into the `rom` folder so that `rom/default.xex` exists. 
+
 
 **4. Build.** The first build takes a long time because it also builds the ReXGlue SDK.
 
@@ -110,16 +109,15 @@ out/build/linux-amd64-release/giantrecomp     # Linux
 
 Or, with `just`: `just play-release` (or `just play-debug`) — builds first if needed, then runs it.
 
-That's it if `rom\default.xex` exists — no flags needed for the common case. Press **A** at the title screen, then choose **Story** and a slot marked **NEW**. To quit, close the window.
-
+That's it if `rom\default.xex` exists — no flags needed for the common case. 
 ### Settings file
 
 Copy [`giantsrecomp.toml.example`](giantsrecomp.toml.example) next to `giantrecomp.exe` and rename it to `giantsrecomp.toml` to change any of the following without typing flags every time (the in-game **Settings** overlay, **F4**, reads and writes this same file):
 
-- `portal_mode`: `"software"` (default) uses the virtual portal; `"usb"` uses a real, physically connected Portal of Power (tested with a Wii U Traptanium portal, USB ID `1430:0150`) — just plug it in, no driver changes needed; `"none"` disables the portal and the game says it can't find one.
+- `portal_mode`: `"software"` (default) uses the virtual portal; `"usb"` uses a real, physically connected Portal of Power (tested with a Wii U Traptanium portal) — just plug it in, no driver changes needed; `"none"` disables the portal.
 - `portal_figures_dir`: the folder the in-game figure picker searches and creates new figures in. Press **F6** to open it (mouse only for now): browse your dumps, or create a new figure by name, grouped by game and release order. Leave empty (the default) to use a `figures` folder next to your saves.
 - `portal_figure`: puts one of your own figure dumps on the portal at startup (slot 0). **The game's changes to the figure are saved back to this exact file as you play**, the same as a real portal would. Use a copy if you want to keep the original untouched.
-- `gpu_allow_invalid_fetch_constants`: works around a GPU quirk that can otherwise make parts of the scene, or the whole screen, render blank. Recommended until the underlying cause is fixed (see `docs/investigation/boot-issues.md`).
+- `gpu_allow_invalid_fetch_constants`: works around a GPU quirk that can otherwise make parts of the scene, or the whole screen, render blank. Recommended until the underlying cause is fixed.
 - `user_data_root`: where saves, achievements, shader cache, and the default figures folder live. Leave empty (the default) to use `Documents\giantsrecomp`.
 - `frame_rate_limit`: caps the host frame rate to this many FPS. `0` (the default) is unlimited.
 - `resolution_scale`: supersamples the internal render resolution by this factor (`1`-`8`) before downscaling to your window/monitor — sharper, at a real GPU cost. `1` (the default) is no scaling.
@@ -131,25 +129,13 @@ Any setting can still be passed as a command-line flag instead (`--portal_mode s
 
 `--portal_test_figure` (command line only, for development) puts an all-zero test figure on the portal; the game reports it as a problem toy.
 
-## If something goes wrong
-
-| What you see | What it means |
-| --- | --- |
-| A window saying it "Cannot read ... default.xex" | The game folder is wrong. Check that `rom\default.xex` exists. |
-| "default.xex is not the supported build" | Your disc is a different version. Only version 1.0 (USA and Europe) works. |
-| "Can't find the Portal of Power" | No portal is active. Don't use `--portal_mode none`. |
-| "A toy on the Portal of Power has a problem" | The figure file is not a valid dump, or you used `--portal_test_figure`. |
-| The build stops with an "undefined symbol" error | The build didn't pick up the generated code. Run the `cmake --preset ...` reconfigure step again, then the build step. |
-| A file error about `lzxd.c` during the build (Windows only) | Symlinks were off when you cloned. Do step 1, then re-clone or run `git submodule update --init --recursive`. |
-| (Linux) `clang-20: command not found` when configuring | `clang-20`/`clang++-20` aren't on `PATH` — see the Linux setup step 1 note about distros that install them unversioned. |
-| The game closes suddenly | This is an early build. Please note which screen you were on and open an issue. |
 
 ## For developers
 
 - `giantrecomp_manifest.toml` and `config/default.toml` are the project settings and the fixes needed to convert `default.xex` correctly.
 - `src/portal/` is the portal emulation (no dependency on the SDK, with unit tests in `tests/`). `src/hooks/` connects it to the game. `src/game/` holds other game-specific code.
 - `thirdparty/rexglue-sdk` is the ReXGlue SDK, included as a git submodule.
-- `docs/` has the design (`docs/superpowers/specs/`), the implementation plans, and notes on how the game and portal behave (`docs/investigation/`).
+- `docs/architecture.md` covers the repository layout and portal architecture, `docs/portal-protocol.md` the wire protocol, `docs/figures.md` the figure format and overlay, `docs/build.md` the codegen fixes and testing.
 - Run the unit tests with `ctest --test-dir out/build/win-amd64-debug` (`linux-amd64-debug` on Linux), or `just test-debug`.
 
 ## AI usage

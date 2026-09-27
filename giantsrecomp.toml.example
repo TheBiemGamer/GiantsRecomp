@@ -2,7 +2,8 @@
 # The in-game Settings overlay (F4) reads and writes this same file.
 
 # Works around a GPU quirk that can otherwise make parts of the scene, or the whole screen, render
-# blank. Recommended until the underlying cause is fixed (see docs/investigation/boot-issues.md).
+# blank. On by default (see docs/architecture.md, "Settings").
+
 gpu_allow_invalid_fetch_constants = true
 
 # Caps the host frame rate to this many FPS. 0 (the default) is unlimited.
