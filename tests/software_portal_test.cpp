@@ -1,4 +1,7 @@
+#include <atomic>
+#include <chrono>
 #include <initializer_list>
+#include <thread>
 
 #include "portal/software/software_portal.h"
 #include "test_util.h"
@@ -82,6 +85,183 @@ int main() {
       CHECK(next == static_cast<uint8_t>(previous + 1));
       previous = next;
     }
+  }
+
+  // Slot state bits in a status report: two bits per slot, slot 0 lowest, little-endian at bytes 1-4.
+  auto slot_state = [](const Report& status, int slot) {
+    uint32_t bits = status[1] | (status[2] << 8) | (status[3] << 16) | (uint32_t(status[4]) << 24);
+    return (bits >> (2 * slot)) & 0x3u;
+  };
+  auto pattern = [] {
+    FigureData d{};
+    for (size_t i = 0; i < d.size(); ++i) d[i] = static_cast<uint8_t>(i * 7 + 1);
+    return d;
+  };
+
+  // A figure placed before activation shows as empty until 'A', then "added" (3) for 8 status
+  // reports, then "ready" (1).
+  {
+    SoftwarePortal p;
+    CHECK(p.PlaceFigure(0, pattern()));
+    CHECK(slot_state(p.Read(), 0) == 0);
+    p.Write(Cmd({'A', 0x00}));
+    p.Read();  // the 'A' reply
+    for (int i = 0; i < 8; ++i) CHECK(slot_state(p.Read(), 0) == 3);
+    CHECK(slot_state(p.Read(), 0) == 1);
+    CHECK(slot_state(p.Read(), 0) == 1);
+  }
+
+  // A figure placed after activation goes straight to "added". Other slots stay empty.
+  {
+    SoftwarePortal p;
+    p.Write(Cmd({'A', 0x00}));
+    p.Read();
+    CHECK(p.PlaceFigure(3, pattern()));
+    Report s = p.Read();
+    CHECK(slot_state(s, 3) == 3);
+    CHECK(slot_state(s, 0) == 0);
+    CHECK(slot_state(s, 15) == 0);
+  }
+
+  // Q returns the block's 16 bytes with the "present" flag; block 0 and the last block work.
+  {
+    SoftwarePortal p;
+    FigureData d = pattern();
+    p.PlaceFigure(0, d);
+    for (uint8_t block : {uint8_t(0), uint8_t(1), uint8_t(0x3F)}) {
+      p.Write(Cmd({'Q', 0x00, block}));
+      Report r = p.Read();
+      CHECK(r[0] == 0x51 && r[1] == 0x10 && r[2] == block);
+      for (size_t i = 0; i < kBlockSize; ++i) CHECK(r[3 + i] == d[block * kBlockSize + i]);
+    }
+  }
+
+  // The high nibble of Q's second byte is ignored; the low nibble selects the slot.
+  {
+    SoftwarePortal p;
+    p.PlaceFigure(2, pattern());
+    p.Write(Cmd({'Q', 0xF2, 0x00}));
+    Report r = p.Read();
+    CHECK(r[1] == 0x12);
+    p.Write(Cmd({'Q', 0xF0, 0x00}));  // slot 0 is empty
+    Report empty = p.Read();
+    CHECK(empty[1] == 0x00 && empty[2] == 0x00 && empty[3] == 0x00);
+  }
+
+  // Q for an empty slot has no "present" flag and zero data. Block 64 and up never reads out of bounds.
+  {
+    SoftwarePortal p;
+    p.PlaceFigure(0, pattern());
+    p.Write(Cmd({'Q', 0x05, 0x02}));  // slot 5 empty
+    Report r = p.Read();
+    CHECK(r[1] == 0x05 && r[2] == 0x02);
+    for (size_t i = 3; i < 3 + kBlockSize; ++i) CHECK(r[i] == 0);
+    for (int block : {64, 65, 127, 200, 255}) {
+      p.Write(Cmd({'Q', 0x00, static_cast<uint8_t>(block)}));
+      Report o = p.Read();
+      CHECK(o[0] == 0x51 && o[1] == 0x00 && o[2] == block);
+      for (size_t i = 3; i < 3 + kBlockSize; ++i) CHECK(o[i] == 0);
+    }
+  }
+
+  // W writes 16 bytes, replies 57 <flag|slot> <block>, and Q reads them back. Out-of-range blocks
+  // and empty slots are ignored without touching any figure.
+  {
+    SoftwarePortal p;
+    FigureData d = pattern();
+    p.PlaceFigure(1, d);
+    Report w = Cmd({'W', 0x01, 0x05});
+    for (size_t i = 0; i < kBlockSize; ++i) w[3 + i] = static_cast<uint8_t>(0xA0 + i);
+    p.Write(w);
+    Report reply = p.Read();
+    CHECK(reply[0] == 0x57 && reply[1] == 0x11 && reply[2] == 0x05);
+    p.Write(Cmd({'Q', 0x01, 0x05}));
+    Report q = p.Read();
+    for (size_t i = 0; i < kBlockSize; ++i) CHECK(q[3 + i] == static_cast<uint8_t>(0xA0 + i));
+    auto after = p.Figure(1);
+    CHECK(after.has_value());
+    CHECK((*after)[4 * kBlockSize] == d[4 * kBlockSize]);  // neighbouring block untouched
+
+    Report bad = w;
+    bad[2] = 64;  // out of range
+    p.Write(bad);
+    CHECK(p.Read()[1] == 0x01);  // no "present" flag
+    Report empty_slot = w;
+    empty_slot[1] = 0x07;  // slot 7 has no figure
+    p.Write(empty_slot);
+    CHECK(p.Read()[1] == 0x07);
+    CHECK(*p.Figure(1) == *after);
+  }
+
+  // Out-of-range slots are rejected and change nothing.
+  {
+    SoftwarePortal p;
+    CHECK(!p.PlaceFigure(-1, pattern()));
+    CHECK(!p.PlaceFigure(16, pattern()));
+    CHECK(!p.PlaceFigure(1000, pattern()));
+    CHECK(!p.RemoveFigure(-1));
+    CHECK(!p.RemoveFigure(16));
+    CHECK(!p.HasFigure(-1) && !p.HasFigure(16));
+    CHECK(!p.Figure(16).has_value());
+    for (int i = 0; i < kMaxFigures; ++i) CHECK(!p.HasFigure(i));
+  }
+
+  // RemoveFigure: false for an empty slot; when active the slot shows "removing" (2) once, then empty.
+  {
+    SoftwarePortal p;
+    CHECK(!p.RemoveFigure(0));
+    p.PlaceFigure(0, pattern());
+    p.Write(Cmd({'A', 0x00}));
+    p.Read();
+    for (int i = 0; i < 10; ++i) p.Read();  // settle to ready
+    CHECK(p.HasFigure(0));
+    CHECK(p.RemoveFigure(0));
+    CHECK(!p.HasFigure(0));
+    CHECK(!p.RemoveFigure(0));
+    CHECK(slot_state(p.Read(), 0) == 2);
+    CHECK(slot_state(p.Read(), 0) == 0);
+  }
+
+  // Slot 3's state uses bits 6-7 of the status word.
+  {
+    SoftwarePortal p;
+    p.Write(Cmd({'A', 0x00}));
+    p.Read();
+    p.PlaceFigure(3, pattern());
+    Report s = p.Read();
+    CHECK((s[1] & 0xC0) == 0xC0);
+  }
+
+  // The overlay thread and the game thread use the portal at the same time.
+  {
+    SoftwarePortal p;
+    std::atomic<bool> stop{false};
+    std::thread overlay([&] {
+      FigureData d = pattern();
+      while (!stop) {
+        p.PlaceFigure(0, d);
+        p.PlaceFigure(5, d);
+        p.RemoveFigure(0);
+        p.RemoveFigure(5);
+        (void)p.HasFigure(0);
+        (void)p.Figure(5);
+      }
+    });
+    std::thread game([&] {
+      p.Write(Cmd({'R'}));
+      p.Write(Cmd({'A', 0x01}));
+      while (!stop) {
+        p.Write(Cmd({'Q', 0x00, 0x00}));
+        p.Write(Cmd({'W', 0x05, 0x01}));
+        (void)p.Read();
+        (void)p.Read();
+      }
+    });
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    stop = true;
+    overlay.join();
+    game.join();
+    CHECK(p.Read()[0] != 0x00);  // still answers coherently
   }
 
   return Finish("software_portal");
