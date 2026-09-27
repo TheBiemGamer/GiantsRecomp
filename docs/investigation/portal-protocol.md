@@ -77,3 +77,7 @@ No crashes or `FATAL` lines in any of the four logs.
 `SoftwarePortal::SetWriteCallback` fires after every successful `W` (a present slot, a valid block), with the slot index and the figure's full 1024-byte data. `--portal_figure` wires this to `SaveFigureFileAtomic`, which writes to a `.tmp` file next to the original and renames it over the original, so a crash mid-save cannot corrupt the figure. The save happens synchronously on whichever thread calls `Write()`, since the game writes to a figure only occasionally (once per affecting event, not every frame), not on a timer and not only at shutdown; the process log showed a `Title terminated; hard-exiting process` line on quit in an earlier run, which suggests a clean C++ shutdown is not guaranteed, so a save tied to `OnShutdown` would not be trustworthy on its own.
 
 Not yet re-verified in gameplay: whether the resulting file is accepted correctly on the next load (the `W` block 8 write observed on 2026-09-27 has not yet been confirmed to round-trip through a real play session).
+
+## Confirmed by the author (2026-09-28)
+
+Played into chapter 2 on the Release build with `--gpu_allow_invalid_fetch_constants`: no blanking. Figure progress (Tree Rex's level, upgrades, gold) persisted correctly across quitting and relaunching. Cutscenes run well on Release. Both fixes from this session hold up in real play.
