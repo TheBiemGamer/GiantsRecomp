@@ -4,7 +4,9 @@
 
 #pragma once
 
+#ifdef _WIN32
 #include <windows.h>
+#endif
 
 #include <chrono>
 #include <cstdlib>
@@ -12,6 +14,7 @@
 #include <optional>
 #include <string>
 
+#include <rex/cvar.h>
 #include <rex/logging.h>
 #include <rex/rex_app.h>
 #include <rex/ui/keybinds.h>
@@ -20,6 +23,16 @@
 #include "localization.h"
 #include "overlay/portal_overlay_dialog.h"
 #include "xex_verify.h"
+
+// Manual override for the ImGui overlay's size, since there's no reliable way to auto-detect "the
+// default looks too small/big" across platforms: the SDK's own physical-to-logical DPI conversion
+// (ImGuiDrawer::Draw/UpdateMousePosition) already compensates for actual OS display scaling, so
+// this is on top of that -- for e.g. a large 4K monitor running at 100% OS scaling, which the SDK
+// can't distinguish from a small one (both report the same "DPI").
+REXCVAR_DEFINE_DOUBLE(ui_scale, 1.0, "UI",
+                     "Scales the ImGui overlay's font size and widget sizing. Increase for large "
+                     "screens where the default looks small.")
+    .lifecycle(rex::cvar::Lifecycle::kInitOnly);
 
 class GiantrecompApp : public rex::ReXApp {
  public:
@@ -60,7 +73,26 @@ class GiantrecompApp : public rex::ReXApp {
     // font with no antialiasing. Add a real, readable, antialiased font (ImFontConfig's default
     // oversampling applies since we don't override it) and make it the default everywhere,
     // including the SDK's own F3/console/F4/F7 overlays.
-    ImFont* font = atlas->AddFontFromFileTTF("C:\\Windows\\Fonts\\segoeui.ttf", 18.0f);
+    const float font_size = 18.0f * float(REXCVAR_GET(ui_scale));
+    ImFont* font = nullptr;
+#ifdef _WIN32
+    font = atlas->AddFontFromFileTTF("C:\\Windows\\Fonts\\segoeui.ttf", font_size);
+#else
+    // No single well-known path across distros; try common ones in order and keep the first that
+    // exists. Falls through to the SDK's built-in ProggyTiny font if none of these are installed.
+    static constexpr const char* kLinuxFontCandidates[] = {
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+    };
+    for (const char* path : kLinuxFontCandidates) {
+      if (!std::filesystem::exists(path)) continue;
+      font = atlas->AddFontFromFileTTF(path, font_size);
+      if (font) break;
+    }
+#endif
     if (font) ImGui::GetIO().FontDefault = font;
   }
 
@@ -78,6 +110,7 @@ class GiantrecompApp : public rex::ReXApp {
     imgui_style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.26f, 0.55f, 0.90f, 0.70f);
     imgui_style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.16f, 0.38f, 0.70f, 0.85f);
     imgui_style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.16f, 0.38f, 0.70f, 1.00f);
+    imgui_style.ScaleAllSizes(float(REXCVAR_GET(ui_scale)));
   }
 
   void OnCreateDialogs(rex::ui::ImGuiDrawer* drawer) override {
@@ -118,9 +151,16 @@ class GiantrecompApp : public rex::ReXApp {
   }
 
  private:
-  [[noreturn]] static void Fatal(const std::wstring& message) {
-    REXLOG_ERROR("{}", giantrecomp::Utf8(std::filesystem::path(message)));
-    MessageBoxW(nullptr, message.c_str(), L"GiantRecomp", MB_OK | MB_ICONERROR);
+  [[noreturn]] static void Fatal(const std::string& message) {
+    REXLOG_ERROR("{}", message);
+#ifdef _WIN32
+    // message is UTF-8; std::filesystem::path(std::string) assumes the ANSI code page on Windows
+    // and mangles anything outside it, so go through the char8_t overload instead (see Utf8()'s
+    // own comment for why path::string() has the same trap in the other direction).
+    const std::u8string u8(reinterpret_cast<const char8_t*>(message.data()), message.size());
+    const auto wide = std::filesystem::path(u8).wstring();
+    MessageBoxW(nullptr, wide.c_str(), L"GiantRecomp", MB_OK | MB_ICONERROR);
+#endif
     std::exit(2);
   }
 

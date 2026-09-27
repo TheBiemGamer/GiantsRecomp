@@ -13,6 +13,11 @@ gpu_allow_invalid_fetch_constants = true
 # no scaling; 2 is a good starting point for a sharper, still-affordable image.
 resolution_scale = 2
 
+# Scales the ImGui overlays (F3/F4/F6/F7, console) font size and widget sizing. The SDK already
+# compensates for actual OS display scaling, so this is for the separate case of a large or
+# high-resolution monitor running at 100% OS scaling, where the default can still look small.
+# ui_scale = 1.5
+
 # Sets the startup window size, e.g. for an ultrawide or 4K monitor. Giants only ever ran at
 # 16:9/4:3 on real hardware, so other aspect ratios are pillarboxed/letterboxed to the nearest of
 # those rather than stretched -- wide-FOV gameplay is planned but not implemented yet.
