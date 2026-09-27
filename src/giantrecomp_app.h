@@ -43,6 +43,31 @@ class GiantrecompApp : public rex::ReXApp {
 
   void OnPostSetup() override { giantrecomp::InstallConfiguredPortal(); }
 
+  void OnConfigureFonts(ImFontAtlas* atlas) override {
+    // The SDK's built-in font (ProggyTiny, forced OversampleH/V=1 + PixelSnapH) is a tiny debug
+    // font with no antialiasing. Add a real, readable, antialiased font (ImFontConfig's default
+    // oversampling applies since we don't override it) and make it the default everywhere,
+    // including the SDK's own F3/console/F4/F7 overlays.
+    ImFont* font = atlas->AddFontFromFileTTF("C:\\Windows\\Fonts\\segoeui.ttf", 18.0f);
+    if (font) ImGui::GetIO().FontDefault = font;
+  }
+
+  void OnConfigureStyle(ImGuiStyle& imgui_style, rex::ui::Style& ui_style) override {
+    (void)ui_style;
+    // Replace the SDK's green terminal-console theme with ImGui's normal dark theme, plus a
+    // light blue accent so it still has some identity.
+    ImGui::StyleColorsDark(&imgui_style);
+    imgui_style.WindowRounding = 4.0f;
+    imgui_style.FrameRounding = 3.0f;
+    imgui_style.Colors[ImGuiCol_Button] = ImVec4(0.20f, 0.45f, 0.80f, 0.75f);
+    imgui_style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.26f, 0.55f, 0.90f, 0.90f);
+    imgui_style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.16f, 0.38f, 0.70f, 1.00f);
+    imgui_style.Colors[ImGuiCol_Header] = ImVec4(0.20f, 0.45f, 0.80f, 0.55f);
+    imgui_style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.26f, 0.55f, 0.90f, 0.70f);
+    imgui_style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.16f, 0.38f, 0.70f, 0.85f);
+    imgui_style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.16f, 0.38f, 0.70f, 1.00f);
+  }
+
   void OnCreateDialogs(rex::ui::ImGuiDrawer* drawer) override {
     rex::ui::RegisterBind("bind_portal_overlay", "F6", "Toggle the portal figure picker",
                           [this, drawer] {
