@@ -1,64 +1,124 @@
 #include "portal/usb/usb_portal.h"
 
 #include <rex/logging.h>
-#include <rex/string/utf8.h>
-
-#include "portal/usb/usb_report_codec.h"
 
 namespace giantrecomp::portal {
 
 namespace {
-// hid_error() returns a UTF-16 string on Windows (wchar_t and char16_t are the same width there,
-// just distinct types) -- narrow it for REXLOG, which expects UTF-8.
-std::string HidErrorUtf8(hid_device* device) {
-  const wchar_t* message = hid_error(device);
-  if (message == nullptr) return "(no error message)";
-  return rex::string::to_utf8(
-      std::u16string_view(reinterpret_cast<const char16_t*>(message)));
+
+bool IsKnownPortal(const libusb_device_descriptor& desc) {
+  for (const auto& [vendor_id, product_id] : kKnownPortals) {
+    if (desc.idVendor == vendor_id && desc.idProduct == product_id) return true;
+  }
+  return false;
 }
+
 }  // namespace
 
 UsbPortal::UsbPortal() {
-  if (hid_init() != 0) return;
-  for (const auto& [vendor_id, product_id] : kKnownPortals) {
-    device_ = hid_open(vendor_id, product_id, nullptr);
-    if (device_ != nullptr) break;
+  if (libusb_init(&ctx_) != LIBUSB_SUCCESS) {
+    ctx_ = nullptr;
+    return;
   }
-  // Deliberately never call hid_exit(): it finalizes the whole hidapi library, not just this
-  // device, and this portal lives for the whole process (see portal_hook.cpp's InstallConfiguredPortal,
-  // which never frees its SoftwarePortal either, for the same reason). Process exit cleans this up.
+
+  libusb_device** devices = nullptr;
+  const ssize_t count = libusb_get_device_list(ctx_, &devices);
+  if (count < 0) return;
+
+  for (ssize_t i = 0; i < count && handle_ == nullptr; ++i) {
+    libusb_device* device = devices[i];
+    libusb_device_descriptor desc{};
+    if (libusb_get_device_descriptor(device, &desc) != LIBUSB_SUCCESS) continue;
+    if (!IsKnownPortal(desc)) continue;
+
+    libusb_device_handle* handle = nullptr;
+    if (libusb_open(device, &handle) != LIBUSB_SUCCESS) continue;
+    handle_ = handle;
+
+    if (!ClaimInterfaceAndFindEndpoints(device)) {
+      libusb_close(handle_);
+      handle_ = nullptr;
+      continue;
+    }
+  }
+  libusb_free_device_list(devices, 1);
+}
+
+bool UsbPortal::ClaimInterfaceAndFindEndpoints(libusb_device* device) {
+  libusb_config_descriptor* config = nullptr;
+  if (libusb_get_active_config_descriptor(device, &config) != LIBUSB_SUCCESS) return false;
+
+  // Only the IN endpoint is required: commands go out through a HID SET_REPORT control transfer
+  // (see Write()), not an interrupt OUT report -- matching how this device's firmware actually
+  // expects to receive them (verified against real hardware; see
+  // docs/investigation/portal-protocol.md). An OUT endpoint, if the descriptor declares one, is
+  // simply unused.
+  bool found_in = false;
+  uint8_t claimed_interface = 0;
+  for (uint8_t i = 0; i < config->bNumInterfaces && !found_in; ++i) {
+    const libusb_interface& interface = config->interface[i];
+    for (int alt = 0; alt < interface.num_altsetting && !found_in; ++alt) {
+      const libusb_interface_descriptor& altsetting = interface.altsetting[alt];
+      for (uint8_t e = 0; e < altsetting.bNumEndpoints; ++e) {
+        const libusb_endpoint_descriptor& endpoint = altsetting.endpoint[e];
+        if ((endpoint.bEndpointAddress & LIBUSB_ENDPOINT_IN) != 0) {
+          endpoint_in_ = endpoint.bEndpointAddress;
+          found_in = true;
+          claimed_interface = altsetting.bInterfaceNumber;
+          break;
+        }
+      }
+    }
+  }
+  libusb_free_config_descriptor(config);
+
+  if (!found_in) return false;
+  return libusb_claim_interface(handle_, claimed_interface) == LIBUSB_SUCCESS;
 }
 
 UsbPortal::~UsbPortal() {
-  if (device_ != nullptr) hid_close(device_);
+  if (handle_ != nullptr) libusb_close(handle_);
+  if (ctx_ != nullptr) libusb_exit(ctx_);
 }
 
 void UsbPortal::Write(const Report& report) {
-  if (device_ == nullptr) return;
-  const auto buffer = EncodeOutputReport(report);
-  const int written = hid_write(device_, buffer.data(), buffer.size());
-  // -1 is hid_write()'s only error indicator; anything else (including a short write) is not
-  // treated as a failure here. Logged once, not every call, since this runs at the game's polling
-  // rate and a stuck/unplugged device would otherwise flood the log.
-  if (written < 0 && !write_error_logged_.exchange(true)) {
-    REXLOG_WARN("Portal (usb): hid_write failed: {}", HidErrorUtf8(device_));
+  if (handle_ == nullptr) return;
+  // Commands go out via a HID SET_REPORT control transfer (Output report, ID 0), not the
+  // interrupt OUT endpoint -- matching Cemu's own real-hardware backend (nsyshid
+  // DeviceLibusb::SetReport). Verified against real hardware: a plain interrupt-OUT write is
+  // accepted at the transport level (rc=0) but silently ignored by the firmware -- SET_REPORT is
+  // the only way that gets a real, distinct reply out of the device (see
+  // docs/investigation/portal-protocol.md).
+  constexpr uint8_t kHidSetReport = 0x09;
+  constexpr uint16_t kOutputReportType = 0x02;
+  const uint16_t report_type_and_id = (kOutputReportType << 8) | 0x00;
+  constexpr uint8_t kRequestType =
+      static_cast<uint8_t>(LIBUSB_REQUEST_TYPE_CLASS) | static_cast<uint8_t>(LIBUSB_RECIPIENT_INTERFACE) |
+      static_cast<uint8_t>(LIBUSB_ENDPOINT_OUT);
+  const int rc = libusb_control_transfer(
+      handle_, kRequestType, kHidSetReport, report_type_and_id, 0,
+      const_cast<uint8_t*>(report.data()),
+      static_cast<uint16_t>(report.size()), 50);
+  // libusb_control_transfer returns the number of bytes transferred (>= 0) on success, or a
+  // negative libusb_error code on failure -- unlike libusb_interrupt_transfer's rc/actual split.
+  if (rc < 0 && rc != LIBUSB_ERROR_TIMEOUT && !write_error_logged_.exchange(true)) {
+    REXLOG_WARN("Portal (usb): libusb write failed: {}", libusb_error_name(rc));
   }
 }
 
 Report UsbPortal::Read() {
-  if (device_ == nullptr) return Report{};
-  uint8_t buffer[kDeviceReportSize] = {};
-  // A short timeout keeps this from blocking the game's polling thread indefinitely if the device
-  // stops responding; an all-zero Report on timeout/failure is a shape the game already tolerates
-  // (see docs/investigation/portal-protocol.md's status-frame/idle-read notes).
-  const int bytes_read = hid_read_timeout(device_, buffer, sizeof(buffer), 50);
-  // 0 means "no report within the timeout", hidapi's normal outcome for an idle poll, not a
-  // failure. -1 is the actual error indicator. Logged once, for the same reason as Write() above.
-  if (bytes_read < 0 && !read_error_logged_.exchange(true)) {
-    REXLOG_WARN("Portal (usb): hid_read failed: {}", HidErrorUtf8(device_));
+  if (handle_ == nullptr) return Report{};
+  Report report{};
+  int actual = 0;
+  const int rc = libusb_interrupt_transfer(handle_, endpoint_in_, report.data(),
+                                           static_cast<int>(report.size()), &actual, 50);
+  if (rc != LIBUSB_SUCCESS) {
+    if (rc != LIBUSB_ERROR_TIMEOUT && !read_error_logged_.exchange(true)) {
+      REXLOG_WARN("Portal (usb): libusb read failed: {}", libusb_error_name(rc));
+    }
+    return Report{};
   }
-  if (bytes_read <= 0) return Report{};
-  return DecodeInputReport(buffer, static_cast<size_t>(bytes_read));
+  return report;
 }
 
 }  // namespace giantrecomp::portal

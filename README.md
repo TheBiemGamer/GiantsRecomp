@@ -13,10 +13,10 @@ This is a solo, for-fun project to see whether a static recompilation of Skyland
 **Works today**
 - The game starts, renders, plays sound, and plays through Story mode with a controller.
 - A virtual Portal of Power with one of your own figures on it. Progress on that figure (levelling up, upgrades) is saved back to its `.dump` file, so it carries over between play sessions.
+- A real, physical Portal of Power over USB (`portal_mode = "usb"`) — tested with a Wii U Traptanium portal. Needs its driver rebound to WinUSB (e.g. with [Zadig](https://zadig.akeo.ie/)) first; see the settings-file section below. Figure recognition on the real portal hasn't been independently confirmed yet (see `docs/investigation/portal-protocol.md`), but the portal itself is found and accepted by the game.
 
 **Not yet**
 - Only one figure at a time, chosen before you start. A menu to swap figures while playing is planned.
-- Real portals over USB (Wii U and Xbox 360 Traptanium portals are the targets).
 - It can be slow, especially in the everyday (Debug) build (see [Playing](#playing) for the faster Release build). Expect stutter the first time an effect appears in a scene; it should be smoother the second time. Cutscenes are the heaviest part and lag the most.
 - Keyboard and mouse. Use a controller.
 - Modes other than Story have not been tested. Linux and macOS are not supported.
@@ -77,7 +77,7 @@ That's it if `rom\default.xex` exists — no flags needed for the common case. P
 
 Copy [`giantsrecomp.toml.example`](giantsrecomp.toml.example) next to `giantrecomp.exe` and rename it to `giantsrecomp.toml` to change any of the following without typing flags every time (the in-game **Settings** overlay, **F4**, reads and writes this same file):
 
-- `portal_mode`: `"software"` (default) uses the virtual portal; `"none"` disables it and the game says it can't find one.
+- `portal_mode`: `"software"` (default) uses the virtual portal; `"usb"` uses a real, physically connected Portal of Power (tested with a Wii U Traptanium portal, USB ID `1430:0150`) — its driver must be rebound to WinUSB first (use [Zadig](https://zadig.akeo.ie/); pick the portal from the device list and replace its driver with WinUSB, not the reverse); `"none"` disables the portal and the game says it can't find one.
 - `portal_figures_dir`: the folder the in-game figure picker searches and creates new figures in. Press **F6** to open it (mouse only for now): browse your dumps, or create a new figure by name, grouped by game and release order. Leave empty (the default) to use a `figures` folder next to your saves.
 - `portal_figure`: puts one of your own figure dumps on the portal at startup (slot 0). **The game's changes to the figure are saved back to this exact file as you play**, the same as a real portal would. Use a copy if you want to keep the original untouched.
 - `gpu_allow_invalid_fetch_constants`: works around a GPU quirk that can otherwise make parts of the scene, or the whole screen, render blank. Recommended until the underlying cause is fixed (see `docs/investigation/boot-issues.md`).

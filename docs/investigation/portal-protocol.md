@@ -146,18 +146,55 @@ at inline.
   This rules out a queuing/staleness explanation: the device is not withholding a reply behind a
   backlog, it simply never sends one.
 
-**Conclusion so far**: the real device does not implement the request/reply model the milestone-4
-spike assumed (one queued reply per written command) at all. It looks like a pure autonomous
-status-stream device: it reports its own state continuously on the IN endpoint, and whatever
-effect a written command has (activating, LEDs, block reads) happens silently, reflected only in
-the next status frame's state bits, if at all — never as a distinct reply frame keyed to the
-command that was sent. `SoftwarePortal`'s reply-queue model (`replies_` in
-`software_portal.cpp`) and the whole framing this feature was built against may not describe how
-real hardware behaves; the milestone-4 spike's reply shapes (`R`→`52 02 1B`, `A`→`41 <n> FF 77`,
-etc.) were the *spike's own* chosen replies when it stood in for the portal, not necessarily
-verified against real firmware.
+**Conclusion at the time**: the real device did not appear to implement the request/reply model
+the milestone-4 spike assumed, over either transport tried so far (hidapi/HidUsb, then a first
+pass with libusb/WinUSB using plain `libusb_interrupt_transfer` for both directions — same `R`
+forever / `S`-only result, ruling out the Windows HID class driver as the cause too). See below:
+the real cause turned out to be a third thing, not a dead end.
 
-**Not yet tried**: a real packet capture (USBPcap + Wireshark, or Cemu's own logging with
-`BackendLibusb` against this exact device) to see what a real console/Cemu session actually
-exchanges with this hardware, since both cheap code-level hypotheses are now exhausted and further
-guessing from this side isn't warranted without new ground truth.
+## Root cause found: commands need a HID SET_REPORT control transfer, not an interrupt OUT write (2026-09-27, same session, after driver rebind to WinUSB)
+
+*Observed*, real Wii U portal, WinUSB-bound (via Zadig), libusb backend
+(`src/portal/usb/usb_portal.cpp`), throwaway diagnostic build:
+
+Cemu's `SkylanderPortalDevice::SetReport` (`Skylander.cpp`) is what actually dispatches every
+portal command in Cemu's own code (`g_skyportal.ControlTransfer(...)` is called from `SetReport`,
+never from `Write`) — a detail read but not connected to the real-hardware behavior in the two
+disproven hypotheses above, since `DeviceLibusb::SetReport` (`BackendLibusb.cpp`) sends this via a
+`libusb_control_transfer` with `HID_CLASS_SET_REPORT` (request `0x09`), not a plain interrupt-OUT
+transfer. This is different from both things already tried: not `hid_send_feature_report`
+(control transfer, but **Feature** report type `0x03`, which this device genuinely doesn't
+support — confirmed, `-1` every call), and not `hid_write`/`libusb_interrupt_transfer` (a normal
+data transfer, not a control transfer, even though it's aimed at the same OUT endpoint).
+
+Switching `UsbPortal::Write` to `libusb_control_transfer` with `LIBUSB_REQUEST_TYPE_CLASS |
+LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_OUT`, request `0x09` (`SET_REPORT`), `wValue = (0x02
+<< 8) | 0x00` (report type **Output**, report ID 0) immediately produced real, distinct replies
+that exactly match the milestone-4 spike's assumed shapes:
+
+| Sent | Next read |
+|---|---|
+| `52` (`R`) | `52 02 1b` |
+| `41 00` (`A`, deactivate) | `41 00 ff ...` |
+| `41 01` (`A`, activate) | `41 01 ff ...` |
+| `53` (`S`) | `53 00 00 ...` (status, unchanged) |
+
+A plain interrupt-OUT write of the identical bytes (either `hid_write` or
+`libusb_interrupt_transfer`) succeeds at the transport level (`rc=0`, all 32 bytes accepted) but
+is silently discarded by the device's firmware — it never affects what the device reports back.
+Only `SET_REPORT` actually reaches the command-processing side of the device.
+
+**End-to-end confirmed working**: with this fix, `--portal_mode usb` against the real, empty
+(no figure) Wii U portal gets past the title screen with no "Can't find the Portal of Power"
+screen, straight into Story mode's opening cutscene ("Meet Norticus") — the same class of result
+`docs/investigation/portal-protocol.md`'s "Verified with the real SoftwarePortal" section
+describes for the software backend with an empty portal.
+
+**Not yet independently verified**: placing a real figure on the real portal and confirming the
+game recognizes it (the second half of spec §1's success bar) — this session's testing used an
+empty portal throughout. Expected to work given the command-level protocol is now confirmed
+correct end-to-end, but not observed directly.
+
+The `UsbPortal::ClaimInterfaceAndFindEndpoints` only requires an IN endpoint now; the OUT endpoint
+this device also advertises is unused, since all writes go through the control endpoint (0)
+instead.

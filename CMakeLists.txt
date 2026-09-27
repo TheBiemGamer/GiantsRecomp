@@ -15,19 +15,23 @@ if(NOT REXSDK_DIR AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/rexglue-sdk
         "Path to the rexglue-sdk source tree" FORCE)
 endif()
 
-# hidapi provides USB HID access for the real portal backend (portal_mode = "usb"). Its own
-# CMakeLists picks the right per-OS backend automatically -- on Windows this is the native HID
-# API, not libusb, so no WinUSB/Zadig driver replacement is needed.
-if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/hidapi/CMakeLists.txt")
-    message(FATAL_ERROR "thirdparty/hidapi is missing. Run: git submodule update --init --recursive")
+# libusb provides raw USB access for the real portal backend (portal_mode = "usb"), matching
+# Cemu's own real-hardware backend (nsyshid BackendLibusb) byte-for-byte instead of going through
+# Windows' HID class driver. This needs the portal's driver rebound to WinUSB (e.g. via Zadig) --
+# unlike the earlier hidapi-based attempt, this is NOT optional for portal_mode=usb to work.
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/libusb-cmake/CMakeLists.txt")
+    message(FATAL_ERROR "thirdparty/libusb-cmake is missing. Run: git submodule update --init --recursive")
 endif()
-set(HIDAPI_WITH_TESTS OFF CACHE BOOL "" FORCE)
+set(LIBUSB_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(LIBUSB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(LIBUSB_INSTALL_TARGETS OFF CACHE BOOL "" FORCE)
 # Force static explicitly: this runs before generated/rexglue.cmake pulls in the SDK's own
 # thirdparty/CMakeLists.txt, which is what normally forces BUILD_SHARED_LIBS off project-wide. On
-# a first configure (empty cache) that ordering means hidapi's own default (ON) wins and it builds
-# as a DLL -- an extra runtime dependency nobody using portal_mode other than "usb" asked for.
+# a first configure (empty cache) that ordering means the default (ON) would otherwise win and it
+# would build as a DLL -- an extra runtime dependency nobody using portal_mode other than "usb"
+# asked for (the same class of bug the earlier hidapi vendoring had, fixed the same way here).
 set(BUILD_SHARED_LIBS OFF)
-add_subdirectory(thirdparty/hidapi)
+add_subdirectory(thirdparty/libusb-cmake)
 
 include(generated/rexglue.cmake)
 
@@ -85,7 +89,7 @@ add_library(giantrecomp_verify STATIC src/xex_verify.cpp)
 target_include_directories(giantrecomp_verify PUBLIC src)
 target_link_libraries(giantrecomp_verify PUBLIC bcrypt)
 
-target_link_libraries(giantrecomp PRIVATE giantrecomp_verify giantrecomp_portal hidapi::hidapi)
+target_link_libraries(giantrecomp PRIVATE giantrecomp_verify giantrecomp_portal libusb::usb-1.0)
 target_compile_definitions(giantrecomp PRIVATE GIANTRECOMP_XEX_SHA256="${GIANTRECOMP_XEX_SHA256}")
 
 enable_testing()
@@ -100,12 +104,11 @@ add_library(giantrecomp_portal STATIC
     src/portal/portal_mode.cpp
     src/portal/xbox_frame.cpp
     src/portal/software/software_portal.cpp
-    src/portal/usb/usb_report_codec.cpp
 )
 target_include_directories(giantrecomp_portal PUBLIC src)
 target_compile_features(giantrecomp_portal PUBLIC cxx_std_23)
 
-foreach(portal_test portal_framing_test portal_mode_test software_portal_test figure_file_test figure_catalog_test usb_report_codec_test)
+foreach(portal_test portal_framing_test portal_mode_test software_portal_test figure_file_test figure_catalog_test)
     add_executable(${portal_test} tests/${portal_test}.cpp)
     target_include_directories(${portal_test} PRIVATE tests)
     target_link_libraries(${portal_test} PRIVATE giantrecomp_portal)

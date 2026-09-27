@@ -18,8 +18,8 @@
 #include "portal/xbox_frame.h"
 
 REXCVAR_DEFINE_STRING(portal_mode, "software", "Portal",
-                      "Portal backend: 'software', 'usb' (experimental -- opens but the game does "
-                      "not yet recognize the portal as present, see "
+                      "Portal backend: 'software', 'usb' (a real, physical Portal of Power over "
+                      "USB -- requires the device's driver rebound to WinUSB, e.g. via Zadig; see "
                       "docs/investigation/portal-protocol.md), or 'none'");
 REXCVAR_DEFINE_BOOL(portal_test_figure, false, "Portal",
                     "Development: put an all-zero figure on the portal (the game reports it as a "
@@ -68,8 +68,9 @@ void InstallConfiguredPortal(const std::filesystem::path& default_figures_dir) {
   if (*mode == portal::PortalMode::kUsb) {
     auto* usb = new portal::UsbPortal();  // intentionally never freed, matching the software path
     if (!usb->IsOpen()) {
-      REXLOG_WARN("Portal: no USB portal found (checked known Skylanders portal VID/PIDs); "
-                  "running with no portal");
+      REXLOG_WARN("Portal: no USB portal found (checked known Skylanders portal VID/PIDs; if one "
+                  "is plugged in, its driver may need rebinding to WinUSB -- see Zadig); running "
+                  "with no portal");
       delete usb;
       return;
     }
@@ -77,8 +78,7 @@ void InstallConfiguredPortal(const std::filesystem::path& default_figures_dir) {
     // handle (used by GetSoftwarePortal() for the figure-picker overlay), and there is no
     // software portal active in this mode.
     g_portal.store(usb);
-    REXLOG_WARN("Portal: usb (experimental -- opened the device, but the game is not yet known "
-                "to recognize it as present; see docs/investigation/portal-protocol.md)");
+    REXLOG_INFO("Portal: usb");
     return;
   }
 
