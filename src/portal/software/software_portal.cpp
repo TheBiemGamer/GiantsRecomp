@@ -65,6 +65,9 @@ void SoftwarePortal::Write(const Report& in) {
         if (s.present && block < kBlockCount) {
           out[1] |= 0x10;
           std::copy_n(s.data.begin() + block * kBlockSize, kBlockSize, out.begin() + 3);
+          if (research_log_) {
+            research_log_("read", slot, block, &s.data[block * kBlockSize], kBlockSize);
+          }
         }
         replies_.push_back(out);
         break;
@@ -77,6 +80,9 @@ void SoftwarePortal::Write(const Report& in) {
         if (s.present && block < kBlockCount) {
           out[1] |= 0x10;
           std::copy_n(in.begin() + 3, kBlockSize, s.data.begin() + block * kBlockSize);
+          if (research_log_) {
+            research_log_("write", slot, block, &s.data[block * kBlockSize], kBlockSize);
+          }
           written = WriteEvent{static_cast<int>(slot), s.data, s.source};
         }
         replies_.push_back(out);
@@ -165,6 +171,12 @@ void SoftwarePortal::SetWriteCallback(
         callback) {
   std::lock_guard<std::mutex> lock(mu_);
   on_write_ = std::move(callback);
+}
+
+void SoftwarePortal::SetResearchLogCallback(
+    std::function<void(const char*, int, int, const uint8_t*, size_t)> callback) {
+  std::lock_guard<std::mutex> lock(mu_);
+  research_log_ = std::move(callback);
 }
 
 std::optional<FigureData> SoftwarePortal::Figure(int slot) const {

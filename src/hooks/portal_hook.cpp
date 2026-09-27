@@ -43,6 +43,24 @@ std::filesystem::path Utf8ToPath(const std::string& utf8) {
   return std::filesystem::path(u8);
 }
 
+// Mirrors UsbPortal's own local HexBytes helper (usb_portal.cpp) -- duplicated rather than shared
+// across files, matching this project's existing style for small helpers backing a temporary
+// diagnostic feature. Needed here, not in software_portal.cpp/.h, because SoftwarePortal
+// deliberately has no ReXGlue dependency of its own (see CMakeLists.txt's "Portal core (no
+// ReXGlue dependency)" library) and so cannot call REXLOG_TRACE directly; this file does link
+// ReXGlue, so it is where SoftwarePortal::SetResearchLogCallback gets wired up to actually log.
+std::string HexBytes(const uint8_t* data, size_t n) {
+  static constexpr char kHex[] = "0123456789abcdef";
+  std::string out;
+  out.reserve(n * 3);
+  for (size_t i = 0; i < n; ++i) {
+    if (i) out += ' ';
+    out += kHex[data[i] >> 4];
+    out += kHex[data[i] & 0xF];
+  }
+  return out;
+}
+
 }  // namespace
 
 namespace giantrecomp {
@@ -94,6 +112,14 @@ void InstallConfiguredPortal(const std::filesystem::path& default_figures_dir) {
     } else {
       REXLOG_WARN("Portal: could not save changes back to slot {}'s figure file", slot);
     }
+  });
+  // Trace-log every 'Q'/'W' figure block, matching UsbPortal's own research logging, so both
+  // backends produce comparable "Portal figure research: ..." lines for the future offset
+  // research phase (see docs/portal-protocol.md and figure_stats.h).
+  software->SetResearchLogCallback([](const char* op, int slot, int block, const uint8_t* data,
+                                      size_t n) {
+    REXLOG_TRACE("Portal figure research: software slot {} block {} {} -> {}", slot, block, op,
+                HexBytes(data, n));
   });
 
   // Publish the portal before placing the startup figure: InstallConfiguredPortal runs on the

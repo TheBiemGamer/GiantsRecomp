@@ -41,6 +41,19 @@ class SoftwarePortal : public PortalDevice {
                          const std::optional<std::filesystem::path>& source)>
           callback);
 
+  // Called for every 'Q' (read) and 'W' (write) that touches a present slot's block within range,
+  // with "read" or "write", the slot, the block index, and a pointer to that block's 16 bytes --
+  // purely for optional trace logging of the raw wire bytes, to support the future research phase
+  // that determines real level/gold/nickname offsets (see figure_stats.h). Runs synchronously
+  // under the portal's lock (like the callback above, but note it fires *inside* Write(), not
+  // after unlocking), so it must be cheap and must not call back into this SoftwarePortal.
+  // SoftwarePortal deliberately has no ReXGlue dependency of its own (see CMakeLists.txt), so it
+  // cannot call REXLOG_TRACE directly -- whoever wires this up (see portal_hook.cpp, which does
+  // link ReXGlue) does the actual logging. Pass nullptr to remove it.
+  void SetResearchLogCallback(
+      std::function<void(const char* op, int slot, int block, const uint8_t* data, size_t n)>
+          callback);
+
  private:
   enum class SlotState : uint8_t { kEmpty = 0, kReady = 1, kRemoving = 2, kAdded = 3 };
   struct Slot {
@@ -59,6 +72,7 @@ class SoftwarePortal : public PortalDevice {
   bool active_ = false;
   uint8_t counter_ = 0;
   std::function<void(int, const FigureData&, const std::optional<std::filesystem::path>&)> on_write_;
+  std::function<void(const char*, int, int, const uint8_t*, size_t)> research_log_;
 };
 
 }  // namespace giantrecomp::portal
