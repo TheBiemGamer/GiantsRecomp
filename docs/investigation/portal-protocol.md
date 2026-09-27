@@ -198,3 +198,26 @@ correct end-to-end, but not observed directly.
 The `UsbPortal::ClaimInterfaceAndFindEndpoints` only requires an IN endpoint now; the OUT endpoint
 this device also advertises is unused, since all writes go through the control endpoint (0)
 instead.
+
+## Correction: WinUSB/libusb was not actually necessary -- hidapi's own SET_REPORT call does the same thing (2026-09-27, same session)
+
+The libusb rewrite above was real and does work, but going that far (new driver requirement, new
+dependency) turned out not to be necessary to reach the fix. hidapi has always had a public
+function for exactly this transfer: `hid_send_output_report()` (since hidapi 0.15.0) -- "Output
+reports are sent over the Control endpoint as a Set_Report transfer," per its own header
+documentation. That is the same SET_REPORT/Output-report control transfer the libusb version was
+hand-rolling with `libusb_control_transfer`.
+
+The earlier hidapi attempt never tried this function -- only `hid_write()` (interrupt OUT,
+preferred automatically since this device has one) and `hid_send_feature_report()` (control
+transfer, but the wrong report *type*: Feature, not Output). Switching `UsbPortal::Write` to
+`hid_send_output_report()` and rebinding the portal's driver back to the stock `HidUsb` (no
+WinUSB/Zadig) reproduced the exact same result as the libusb version: `--portal_mode usb` gets an
+empty real Wii U portal past the title screen with no "Can't find the Portal of Power," this time
+reaching the Story mode save-slot picker.
+
+**Current state**: `UsbPortal` uses hidapi again (`src/portal/usb/usb_portal.cpp`), not libusb.
+No driver replacement is required for `portal_mode = "usb"` to work. The
+`thirdparty/libusb-cmake` submodule and the libusb-based implementation were removed after this
+was confirmed; this section (and the "Root cause found" section above it) stay as the record of
+what the real fix *is* (SET_REPORT / Output report, not the specific library used to send it).

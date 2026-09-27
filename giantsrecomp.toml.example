@@ -19,8 +19,8 @@ gpu_allow_invalid_fetch_constants = true
 # resolution = "3440x1440"
 
 # "software" uses the virtual portal; "usb" uses a real, physically connected Portal of Power
-# (its driver must be rebound to WinUSB first, e.g. with Zadig); "none" disables the portal (the
-# game then says it can't find one).
+# (just plug it in, no driver changes needed); "none" disables the portal (the game then says it
+# can't find one).
 portal_mode = "software"
 
 # Folder the in-game figure picker (F6) searches and creates new figures in. Leave empty (the

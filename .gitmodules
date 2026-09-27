@@ -1,6 +1,6 @@
 [submodule "thirdparty/rexglue-sdk"]
 	path = thirdparty/rexglue-sdk
 	url = https://github.com/TheBiemGamer/rexglue-sdk.git
-[submodule "thirdparty/libusb-cmake"]
-	path = thirdparty/libusb-cmake
-	url = https://github.com/libusb/libusb-cmake.git
+[submodule "thirdparty/hidapi"]
+	path = thirdparty/hidapi
+	url = https://github.com/libusb/hidapi.git
