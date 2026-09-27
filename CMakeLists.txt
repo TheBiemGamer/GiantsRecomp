@@ -68,3 +68,18 @@ enable_testing()
 add_executable(giantrecomp_tests tests/xex_verify_test.cpp)
 target_link_libraries(giantrecomp_tests PRIVATE giantrecomp_verify)
 add_test(NAME xex_verify COMMAND giantrecomp_tests)
+
+# --- Portal core (no ReXGlue dependency) ------------------------------------
+add_library(giantrecomp_portal STATIC
+    src/portal/portal_mode.cpp
+    src/portal/xbox_frame.cpp
+)
+target_include_directories(giantrecomp_portal PUBLIC src)
+target_compile_features(giantrecomp_portal PUBLIC cxx_std_23)
+
+foreach(portal_test portal_framing_test portal_mode_test)
+    add_executable(${portal_test} tests/${portal_test}.cpp)
+    target_include_directories(${portal_test} PRIVATE tests)
+    target_link_libraries(${portal_test} PRIVATE giantrecomp_portal)
+    add_test(NAME ${portal_test} COMMAND ${portal_test})
+endforeach()
