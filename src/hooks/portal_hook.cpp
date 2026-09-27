@@ -1,8 +1,11 @@
 #include "hooks/portal_hook.h"
 
+#include <array>
 #include <atomic>
 #include <cstdint>
 #include <filesystem>
+#include <mutex>
+#include <optional>
 #include <string>
 
 #include <rex/cvar.h>
@@ -21,15 +24,25 @@ REXCVAR_DEFINE_BOOL(portal_test_figure, false, "Portal",
                     "Development: put an all-zero figure on the portal (the game reports it as a "
                     "problem toy)");
 REXCVAR_DEFINE_STRING(portal_figure, "", "Portal",
-                      "Path to a raw 1024-byte figure dump to put on the portal (slot 0). The file "
-                      "is only read; changes the game makes to the figure are not saved yet");
+                      "Path to a raw 1024-byte figure dump to put on the portal (slot 0) at "
+                      "startup. Changes the game makes to it are saved back to this file.");
+REXCVAR_DEFINE_STRING(portal_figures_dir, "", "Portal",
+                      "Folder to search for .dump figure files for the in-game figure picker "
+                      "(F6). Searched recursively; only used by the overlay.");
 
 namespace {
 
 std::atomic<giantrecomp::portal::PortalDevice*> g_portal{nullptr};
+std::atomic<giantrecomp::portal::SoftwarePortal*> g_software_portal{nullptr};
 
-// portal_figure/portal_mode arrive as UTF-8; convert explicitly so non-ANSI characters survive
-// (path::string() would throw for characters outside the ANSI code page).
+// Which file each slot's figure was loaded from, so the write callback (registered once, below)
+// knows where to save a given slot's changes. Empty (nullopt) for a slot that was never loaded
+// from a file (for example --portal_test_figure's all-zero figure).
+std::mutex g_slot_paths_mu;
+std::array<std::optional<std::filesystem::path>, giantrecomp::portal::kMaxFigures> g_slot_paths;
+
+// portal_figure/portal_figures_dir arrive as UTF-8; convert explicitly so non-ANSI characters
+// survive (path::string() would throw for characters outside the ANSI code page).
 std::filesystem::path Utf8ToPath(const std::string& utf8) {
   const std::u8string u8(reinterpret_cast<const char8_t*>(utf8.data()), utf8.size());
   return std::filesystem::path(u8);
@@ -50,25 +63,31 @@ void InstallConfiguredPortal() {
     REXLOG_INFO("Portal: none");
     return;
   }
+
   auto* software = new portal::SoftwarePortal();  // intentionally never freed, see the header
+  software->SetWriteCallback([](int slot, const portal::FigureData& data) {
+    std::optional<std::filesystem::path> path;
+    {
+      std::lock_guard<std::mutex> lock(g_slot_paths_mu);
+      if (slot >= 0 && slot < portal::kMaxFigures) path = g_slot_paths[slot];
+    }
+    if (!path) return;  // this slot's figure did not come from a file
+    if (portal::SaveFigureFileAtomic(*path, data)) {
+      REXLOG_INFO("Portal: saved changes back to slot {}'s figure file", slot);
+    } else {
+      REXLOG_WARN("Portal: could not save changes back to slot {}'s figure file", slot);
+    }
+  });
+
+  // Publish the portal before placing the startup figure: InstallConfiguredPortal runs on the
+  // app's setup thread, before any guest thread exists to call the hooks, so this ordering cannot
+  // race with a hook call.
+  g_software_portal.store(software);
+  g_portal.store(software);
+
   const std::string figure_path = REXCVAR_GET(portal_figure);
   if (!figure_path.empty()) {
-    const std::filesystem::path path = Utf8ToPath(figure_path);
-    if (auto figure = portal::LoadFigureFile(path)) {
-      software->PlaceFigure(0, *figure);
-      // Save the game's changes back to the same file it was loaded from. Writes are infrequent
-      // (once per figure-affecting event, not per frame), so an atomic save on the calling thread
-      // is cheap enough; there is no periodic or on-exit save to lose if the process is killed.
-      software->SetWriteCallback([path](int slot, const portal::FigureData& data) {
-        if (slot != 0) return;
-        if (portal::SaveFigureFileAtomic(path, data)) {
-          REXLOG_INFO("Portal: saved changes back to the figure file");
-        } else {
-          REXLOG_WARN("Portal: could not save changes back to the figure file");
-        }
-      });
-      REXLOG_INFO("Portal: placed the figure from '{}' in slot 0", figure_path);
-    } else {
+    if (!PlaceFigureFromFile(0, Utf8ToPath(figure_path))) {
       REXLOG_WARN("Portal: cannot load '{}' (it must be a regular file of exactly {} bytes); "
                   "running with an empty portal",
                   figure_path, portal::kFigureSize);
@@ -77,9 +96,34 @@ void InstallConfiguredPortal() {
     software->PlaceFigure(0, portal::FigureData{});
     REXLOG_WARN("Portal: placed an all-zero test figure in slot 0");
   }
-  g_portal.store(software);
   REXLOG_INFO("Portal: software");
 }
+
+bool PlaceFigureFromFile(int slot, const std::filesystem::path& path) {
+  portal::SoftwarePortal* software = g_software_portal.load();
+  if (!software) return false;
+  auto figure = portal::LoadFigureFile(path);
+  if (!figure) return false;
+  if (!software->PlaceFigure(slot, *figure)) return false;
+  {
+    std::lock_guard<std::mutex> lock(g_slot_paths_mu);
+    if (slot >= 0 && slot < portal::kMaxFigures) g_slot_paths[slot] = path;
+  }
+  return true;
+}
+
+bool RemoveFigureFromSlot(int slot) {
+  portal::SoftwarePortal* software = g_software_portal.load();
+  if (!software) return false;
+  const bool removed = software->RemoveFigure(slot);
+  {
+    std::lock_guard<std::mutex> lock(g_slot_paths_mu);
+    if (slot >= 0 && slot < portal::kMaxFigures) g_slot_paths[slot].reset();
+  }
+  return removed;
+}
+
+portal::SoftwarePortal* GetSoftwarePortal() { return g_software_portal.load(); }
 
 }  // namespace giantrecomp
 
