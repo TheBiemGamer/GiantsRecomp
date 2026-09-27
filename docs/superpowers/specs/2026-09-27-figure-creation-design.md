@@ -53,7 +53,7 @@ Absolute byte offsets in the 1024-byte figure:
 | `0x1C-0x1D` | Skylander variant, uint16 little-endian |
 | `0x1E-0x1F` | CRC16-CCITT (poly `0x1021`, init `0xFFFF`) over bytes `0x00-0x1D`, little-endian |
 | `0x20-0x2F` | zero |
-| sector trailers (byte offsets `0x36`, `0x76`, `0xB6`, ... every `0x40`, i.e. bytes 6-9 of block index `sector*4+3`) | access bits: `69 0F 0F 0F` for sector 0, `69 08 0F 7F` for sectors 1-15 |
+| sector trailers (byte offsets `0x36`, `0x76`, `0xB6`, ... every `0x40`, i.e. bytes 6-9 of block index `sector*4+3`) | access bits: `0F 0F 0F 69` for sector 0, `7F 0F 08 69` for sectors 1-15 (little-endian bytes of Cemu's `0x690F0F0F`/`0x69080F7F` `uint32_t` constants, as its native `memcpy` actually writes them -- confirmed 2026-09-27 against a real dump's sector-1 trailer, which reads exactly `7F 0F 08 69`) |
 | everything else | zero |
 
 This is re-derived as a set of facts about the on-tag data format (which this project's own dumps already independently confirm for the ID/variant/checksum-adjacent bytes — see [[reference-figure-dumps]]), not copied code, consistent with the licensing approach in the original design spec §3.

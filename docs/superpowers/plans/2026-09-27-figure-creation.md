@@ -180,21 +180,21 @@ Append to `tests/figure_file_test.cpp`, just before the final `return Finish("fi
     }
     CHECK(d[0x1E] == (crc & 0xFF));
     CHECK(d[0x1F] == (crc >> 8));
-    // Sector 0 trailer access bits.
-    CHECK(d[0x36] == 0x69);
+    // Sector 0 trailer access bits: little-endian bytes of 0x690F0F0F (0x0F,0x0F,0x0F,0x69).
+    CHECK(d[0x36] == 0x0F);
     CHECK(d[0x37] == 0x0F);
     CHECK(d[0x38] == 0x0F);
-    CHECK(d[0x39] == 0x0F);
-    // Sector 1 trailer access bits (differ from sector 0).
-    CHECK(d[0x76] == 0x69);
-    CHECK(d[0x77] == 0x08);
-    CHECK(d[0x78] == 0x0F);
-    CHECK(d[0x79] == 0x7F);
+    CHECK(d[0x39] == 0x69);
+    // Sector 1 trailer access bits: little-endian bytes of 0x69080F7F (0x7F,0x0F,0x08,0x69).
+    CHECK(d[0x76] == 0x7F);
+    CHECK(d[0x77] == 0x0F);
+    CHECK(d[0x78] == 0x08);
+    CHECK(d[0x79] == 0x69);
     // Sector 15 (last) trailer access bits, same pattern as sector 1.
-    CHECK(d[0x3F6] == 0x69);
-    CHECK(d[0x3F7] == 0x08);
-    CHECK(d[0x3F8] == 0x0F);
-    CHECK(d[0x3F9] == 0x7F);
+    CHECK(d[0x3F6] == 0x7F);
+    CHECK(d[0x3F7] == 0x0F);
+    CHECK(d[0x3F8] == 0x08);
+    CHECK(d[0x3F9] == 0x69);
     // Untouched byte stays zero.
     CHECK(d[0x20] == 0);
   }
@@ -316,17 +316,21 @@ FigureData CreateBlankFigure(uint16_t id, uint16_t variant, std::array<uint8_t, 
   WriteU16LE(data, 0x1C, variant);
   const uint16_t crc = Crc16Ccitt(data.data(), 0x1E, 0xFFFF);
   WriteU16LE(data, 0x1E, crc);
+  // Little-endian bytes of the sector-trailer access-bit constants (0x690F0F0F for sector 0,
+  // 0x69080F7F for sectors 1-15) -- these are raw memcpy'd bytes of a native uint32_t, not the
+  // constant's digits read left-to-right.
   for (int sector = 0; sector < 16; ++sector) {
     const size_t offset = static_cast<size_t>(sector) * 0x40 + 0x36;
-    data[offset] = 0x69;
     if (sector == 0) {
+      data[offset] = 0x0F;
       data[offset + 1] = 0x0F;
       data[offset + 2] = 0x0F;
-      data[offset + 3] = 0x0F;
+      data[offset + 3] = 0x69;
     } else {
-      data[offset + 1] = 0x08;
-      data[offset + 2] = 0x0F;
-      data[offset + 3] = 0x7F;
+      data[offset] = 0x7F;
+      data[offset + 1] = 0x0F;
+      data[offset + 2] = 0x08;
+      data[offset + 3] = 0x69;
     }
   }
   return data;

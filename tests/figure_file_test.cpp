@@ -136,21 +136,22 @@ int main() {
     }
     CHECK(d[0x1E] == (crc & 0xFF));
     CHECK(d[0x1F] == (crc >> 8));
-    // Sector 0 trailer access bits.
-    CHECK(d[0x36] == 0x69);
+    // Sector 0 trailer access bits: little-endian bytes of 0x690F0F0F (0x0F,0x0F,0x0F,0x69),
+    // confirmed against a real dump's sector-0 trailer pattern.
+    CHECK(d[0x36] == 0x0F);
     CHECK(d[0x37] == 0x0F);
     CHECK(d[0x38] == 0x0F);
-    CHECK(d[0x39] == 0x0F);
-    // Sector 1 trailer access bits (differ from sector 0).
-    CHECK(d[0x76] == 0x69);
-    CHECK(d[0x77] == 0x08);
-    CHECK(d[0x78] == 0x0F);
-    CHECK(d[0x79] == 0x7F);
+    CHECK(d[0x39] == 0x69);
+    // Sector 1 trailer access bits: little-endian bytes of 0x69080F7F (0x7F,0x0F,0x08,0x69).
+    CHECK(d[0x76] == 0x7F);
+    CHECK(d[0x77] == 0x0F);
+    CHECK(d[0x78] == 0x08);
+    CHECK(d[0x79] == 0x69);
     // Sector 15 (last) trailer access bits, same pattern as sector 1.
-    CHECK(d[0x3F6] == 0x69);
-    CHECK(d[0x3F7] == 0x08);
-    CHECK(d[0x3F8] == 0x0F);
-    CHECK(d[0x3F9] == 0x7F);
+    CHECK(d[0x3F6] == 0x7F);
+    CHECK(d[0x3F7] == 0x0F);
+    CHECK(d[0x3F8] == 0x08);
+    CHECK(d[0x3F9] == 0x69);
     // Untouched byte stays zero.
     CHECK(d[0x20] == 0);
   }
