@@ -1,6 +1,6 @@
-# GiantRecomp
+# Giants Recompiled
 
-An unofficial PC port of the Xbox 360 version of Skylanders Giants, made by static recompilation with the [ReXGlue SDK](https://github.com/rexglue/rexglue-sdk). It comes with a **virtual Portal of Power**, so you can play without the real toy hardware. Support for real portals is planned.
+An unofficial PC port of the Xbox 360 version of Skylanders Giants, made by static recompilation with [ReXGlue](https://github.com/rexglue/rexglue-sdk). It comes with a **virtual Portal of Power**, so you can play without the real toy hardware. Support for real portals is planned.
 
 This repository contains **no game code and no game data**. You need your own copy of the game.
 
@@ -99,6 +99,12 @@ out\build\win-amd64-release\giantrecomp.exe --game_data_root rom --portal_figure
 - `thirdparty/rexglue-sdk` is the ReXGlue SDK, included as a git submodule.
 - `docs/` has the design (`docs/superpowers/specs/`), the implementation plans, and notes on how the game and portal behave (`docs/investigation/`).
 - Run the unit tests with `ctest --test-dir out/build/win-amd64-debug`.
+
+## AI usage
+
+Claude was used heavily throughout this project. This is my first time doing a static recompilation, and having an AI assistant to work through problems with sped things up enormously — I wouldn't have gotten nearly this far, this fast, without it.
+
+I know AI assistance is a sore subject for some people, and that's a completely fair position to hold. If that's a dealbreaker for you, I understand. For me, this project was about learning how recompilation works, and Claude was a tool that helped me get there faster, not a replacement for understanding what the code does.
 
 ## Credits
 
