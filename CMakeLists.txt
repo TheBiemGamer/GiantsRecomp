@@ -33,6 +33,7 @@ set(GIANTRECOMP_SOURCES
     src/main.cpp
     src/game/kernel_stubs.cpp
     src/hooks/portal_hook.cpp
+    src/localization.cpp
     src/overlay/portal_overlay_dialog.cpp
 )
 

@@ -17,6 +17,7 @@
 #include <rex/ui/keybinds.h>
 
 #include "hooks/portal_hook.h"
+#include "localization.h"
 #include "overlay/portal_overlay_dialog.h"
 #include "xex_verify.h"
 
@@ -41,6 +42,9 @@ class GiantrecompApp : public rex::ReXApp {
   void OnPreSetup(rex::RuntimeConfig& config) override {
     // The Xenos GPU plugin renders the Xbox 360 command stream; without it nothing is drawn.
     if (config.gpu_plugin.empty()) config.gpu_plugin = "xenos";
+    // Some of the game's text (e.g. the autosave warning dialog) is already resolved by the time
+    // OnPostSetup runs -- apply this as early as possible, before the XEX even loads.
+    giantrecomp::ApplyLanguageSetting();
   }
 
   void OnPostSetup() override {
