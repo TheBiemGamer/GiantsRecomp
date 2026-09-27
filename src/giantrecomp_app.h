@@ -24,7 +24,7 @@ class GiantrecompApp : public rex::ReXApp {
 
   static std::unique_ptr<rex::ui::WindowedApp> Create(
       rex::ui::WindowedAppContext& ctx) {
-    return std::unique_ptr<GiantrecompApp>(new GiantrecompApp(ctx, "giantrecomp",
+    return std::unique_ptr<GiantrecompApp>(new GiantrecompApp(ctx, "giantsrecomp",
         PPCImageConfig));
   }
 
