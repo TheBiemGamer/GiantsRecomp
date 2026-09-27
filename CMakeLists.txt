@@ -32,6 +32,7 @@ endif()
 set(GIANTRECOMP_SOURCES
     src/main.cpp
     src/game/kernel_stubs.cpp
+    src/hooks/portal_hook.cpp
 )
 
 if(WIN32)
@@ -61,7 +62,7 @@ add_library(giantrecomp_verify STATIC src/xex_verify.cpp)
 target_include_directories(giantrecomp_verify PUBLIC src)
 target_link_libraries(giantrecomp_verify PUBLIC bcrypt)
 
-target_link_libraries(giantrecomp PRIVATE giantrecomp_verify)
+target_link_libraries(giantrecomp PRIVATE giantrecomp_verify giantrecomp_portal)
 target_compile_definitions(giantrecomp PRIVATE GIANTRECOMP_XEX_SHA256="${GIANTRECOMP_XEX_SHA256}")
 
 enable_testing()

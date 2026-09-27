@@ -1,6 +1,6 @@
 # GiantRecomp
 
-An unofficial PC port of the Xbox 360 version of Skylanders Giants, made by static recompilation with the [ReXGlue SDK](https://github.com/rexglue/rexglue-sdk). Work in progress: the recompiled game runs, renders and reaches its title screen, but pressing A to start shows "Can't find the Portal of Power" because portal support is not written yet.
+An unofficial PC port of the Xbox 360 version of Skylanders Giants, made by static recompilation with the [ReXGlue SDK](https://github.com/rexglue/rexglue-sdk). Work in progress: the recompiled game runs, renders and plays into Story mode with a software Portal of Power. Figures need valid figure data, which is not written yet, so the game currently asks you to put a Skylander on the portal.
 
 This repository contains no game code or assets. You need your own copy of the game.
 
@@ -30,6 +30,8 @@ If you already cloned without `--recursive`, run `git submodule update --init --
 4. Configure again so the generated code is picked up: `cmake --preset win-amd64-debug`
 5. Build: `cmake --build --preset win-amd64-debug`
 6. Run: `out\build\win-amd64-debug\giantrecomp.exe --game_data_root rom`
+
+   Portal options: `--portal_mode software` (the default) or `--portal_mode none`. `--portal_test_figure` puts an all-zero test figure on the portal, which the game reports as a problem toy (real figure data comes in a later milestone).
 
 If the `thirdparty/rexglue-sdk` submodule is missing, the build falls back to an SDK installed into CMake's package registry. Use `-DREXSDK_DIR=<path>` to point at another SDK checkout.
 

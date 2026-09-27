@@ -54,3 +54,14 @@ A read with no queued command reply must return a **status frame**, not repeat t
 - What `W` looks like and whether the game writes progress to the figure.
 - What the game does on removal, and the exact meaning of `Q`'s high nibble.
 - Whether `M` (version) or the LED commands `J` and `L` are ever used.
+
+## Verified with the real SoftwarePortal (milestone 4)
+
+The throwaway spike was replaced by `SoftwarePortal` and the hooks in `src/hooks/portal_hook.cpp`. Four runs against the real game, with a person pressing A at the title screen:
+
+- **Default (`software`), no figure:** the game gets past the portal check, into Story mode, and shows "Player 1: Please put a Skylander on the Portal of Power." So an empty, working portal is accepted.
+- **`--portal_mode none`:** the game's own "Can't find the Portal of Power" screen appears, so the original code path is intact when no portal is installed.
+- **`--portal_mode banana`:** a warning is logged (`Unknown portal_mode 'banana'; running with no portal`) and the game behaves as with `none`.
+- **`--portal_test_figure`:** the game reads the figure and shows "A toy on the Portal of Power has a problem." The all-zero data is rejected, so playing needs valid figure data (milestone 5).
+
+No crashes or `FATAL` lines in any of the four logs.

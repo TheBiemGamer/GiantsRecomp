@@ -105,7 +105,8 @@ The choice is made in milestone 3 by inspecting imports in the generated code an
 - The app is a `ReXApp`. The portal is created in `OnPostSetup` and torn down in `OnShutdown`.
 - The overlay is a `PortalDialog` registered in `OnCreateDialogs(ImGuiDrawer*)`, opened by a hotkey that does not collide with F3 (Debug), F4 (Settings) or backtick (Console).
 - Configuration uses ReXGlue CVars, loaded from a TOML file next to the executable, with `REX_*` environment variables overriding it:
-  - `portal_mode`: `none`, `software` or `usb`. Default `none`.
+  - `portal_mode`: `none`, `software` or `usb` (`usb` is not implemented yet). Default `software`.
+  - `portal_test_figure`: development only. Puts an all-zero figure in slot 0; the game reports it as a problem toy. Default `false`.
   - `portal_usb_device`: optional VID/PID choice when several are attached.
   - `portal_figures_dir`: where figure files live and are saved.
 - `portal_mode = none` is a valid state: the game runs with no portal attached, reaches its title screen, and shows "Can't find the Portal of Power" when the player presses A to start, so the recompile milestone does not depend on portal work.
@@ -122,7 +123,7 @@ The choice is made in milestone 3 by inspecting imports in the generated code an
 1. **Toolchain.** Done: ReXGlue SDK builds and installs.
 2. **Recompile and boot.** Run `rexglue codegen` on `default.xex`, fix `config/default.toml` (function boundaries, switch tables, setjmp/longjmp), and stub then implement kernel imports until the game runs and renders. The game reaches its title screen ("Press A to start"), which is the milestone-2 finish line (recompiled code, graphics, audio and file access all working). With no portal attached, pressing A shows "Can't find the Portal of Power"; getting past that check is milestone 4. Record the XEX SHA-256 and add the startup check.
 3. **Find the portal API.** Determine how the game reaches the portal (imports, report formats, any enumeration handshake). Decide the hook level (4.3). Main reference: Cemu's Xbox 360 Skylander code.
-4. **Minimal SoftwarePortal.** The game detects a portal, then one hard-coded figure.
+4. **Minimal SoftwarePortal.** The game accepts the portal (handshake, status polling, LEDs) and reads a figure's 64 blocks. A test figure with zeroed data is reported as a problem toy; valid figure data is milestone 5.
 5. **Figure library.** Dump import, new-figure creation, `FigureCodec`, `FigureStore`, per-figure saves.
 6. **Overlay.** Hotkey figure picker (4.5).
 7. **UsbPortal.** `HidTransport` for the Wii U Traptanium portal first, then `XusbTransport` for the Xbox 360 one. Verify with real figures that Traptanium portals stay compatible with Giants.
