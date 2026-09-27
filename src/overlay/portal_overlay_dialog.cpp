@@ -12,6 +12,7 @@
 
 #include "hooks/portal_hook.h"
 #include "portal/figure_catalog.h"
+#include "portal/portal_mode.h"
 #include "portal/software/software_portal.h"
 #include "portal/usb/usb_portal.h"
 #include "xex_verify.h"  // giantrecomp::Utf8: path -> UTF-8, never throws on non-ANSI characters
@@ -67,21 +68,34 @@ void PortalOverlayDialog::OnDraw(ImGuiIO& io) {
                          "A read or write error occurred -- see the log for details.");
     }
     ImGui::Separator();
-    if (!usb->FigurePresent()) {
+    const std::vector<int> present_slots = usb->PresentSlots();
+    if (present_slots.empty()) {
       ImGui::TextWrapped("No figure detected on the portal.");
-    } else if (auto id_variant = usb->DetectedIdVariant()) {
-      const auto* sky = portal::FindSkylander(id_variant->first, id_variant->second);
-      if (sky) {
-        ImGui::Text("Detected: %s", std::string(sky->name).c_str());
-      } else {
-        ImGui::Text("Detected: unrecognized figure (id %u, variant %u)",
-                    static_cast<unsigned>(id_variant->first), static_cast<unsigned>(id_variant->second));
-      }
     } else {
-      ImGui::TextWrapped(
-          "A figure is on the portal, but its identity hasn't been read yet -- give the game a "
-          "few seconds after placing it.");
+      // A real portal can hold more than one figure at once (2-player co-op, items), so every
+      // occupied slot is listed, not just the first.
+      for (int slot : present_slots) {
+        if (auto id_variant = usb->DetectedIdVariant(slot)) {
+          const auto* sky = portal::FindSkylander(id_variant->first, id_variant->second);
+          if (sky) {
+            ImGui::Text("Slot %d: %s", slot, std::string(sky->name).c_str());
+          } else {
+            ImGui::Text("Slot %d: unrecognized figure (id %u, variant %u)", slot,
+                        static_cast<unsigned>(id_variant->first),
+                        static_cast<unsigned>(id_variant->second));
+          }
+        } else {
+          ImGui::Text("Slot %d: figure detected, identity not read yet", slot);
+        }
+      }
     }
+    ImGui::End();
+    return;
+  }
+  if (portal::ParsePortalMode(REXCVAR_GET(portal_mode)) == portal::PortalMode::kUsb) {
+    ImGui::TextWrapped(
+        "portal_mode is 'usb' but no USB portal was found at startup. Plug it in and restart the "
+        "game -- hot-plug isn't supported yet.");
     ImGui::End();
     return;
   }

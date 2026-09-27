@@ -6,6 +6,7 @@
 #include <mutex>
 #include <optional>
 #include <utility>
+#include <vector>
 
 #include <hidapi.h>
 
@@ -15,9 +16,14 @@ namespace giantrecomp::portal {
 
 // A small set of VID/PID pairs known to be a real Skylanders Portal of Power, matching Cemu's own
 // nsyshid whitelist for this device family (read for this fact only, not copied code).
+//
+// Only the Wii U portal (1430:0150) has actually been tested (docs/investigation/portal-protocol.md).
+// The Xbox 360 portal (1430:1F17) is whitelisted on the same basis Cemu whitelists it, but this
+// project has no such hardware to verify against -- it may use a different report size or need a
+// different command mechanism than what was found for the Wii U portal.
 inline constexpr std::pair<uint16_t, uint16_t> kKnownPortals[] = {
-    {0x1430, 0x0150},  // Wii U Skylanders portal
-    {0x1430, 0x1F17},  // Xbox 360 Skylanders portal
+    {0x1430, 0x0150},  // Wii U Skylanders portal -- tested, works
+    {0x1430, 0x1F17},  // Xbox 360 Skylanders portal -- untested
 };
 
 // A real, physical Portal of Power, opened over USB HID via hidapi -- no WinUSB/Zadig driver
@@ -53,8 +59,12 @@ class UsbPortal final : public PortalDevice {
   // docs/investigation/portal-protocol.md). Reflects what the game itself has seen so far: it can
   // lag a few seconds behind the real device, since it only updates once the game happens to poll
   // a status frame or read block 1 (where id/variant live) on its own.
-  bool FigurePresent() const { return figure_present_.load(); }
-  std::optional<std::pair<uint16_t, uint16_t>> DetectedIdVariant() const;
+  //
+  // Tracked per slot (0-15, matching kMaxFigures): a real portal can hold more than one figure at
+  // once (Giants supports 2-player co-op plus items), so slot 0 alone is not the whole picture.
+  bool FigurePresent() const;                // true if any slot holds a figure
+  std::vector<int> PresentSlots() const;      // every slot index that currently holds a figure
+  std::optional<std::pair<uint16_t, uint16_t>> DetectedIdVariant(int slot) const;
   bool HadError() const { return write_error_logged_.load() || read_error_logged_.load(); }
 
  private:
@@ -63,9 +73,9 @@ class UsbPortal final : public PortalDevice {
   hid_device* device_ = nullptr;
   std::atomic<bool> write_error_logged_{false};
   std::atomic<bool> read_error_logged_{false};
-  std::atomic<bool> figure_present_{false};
+  std::array<std::atomic<bool>, kMaxFigures> slot_present_{};
   mutable std::mutex detected_mutex_;
-  std::optional<std::pair<uint16_t, uint16_t>> detected_id_variant_;
+  std::array<std::optional<std::pair<uint16_t, uint16_t>>, kMaxFigures> slot_id_variant_;
 };
 
 }  // namespace giantrecomp::portal

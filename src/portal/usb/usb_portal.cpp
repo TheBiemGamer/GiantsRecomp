@@ -66,34 +66,57 @@ Report UsbPortal::Read() {
   return report;
 }
 
-std::optional<std::pair<uint16_t, uint16_t>> UsbPortal::DetectedIdVariant() const {
+bool UsbPortal::FigurePresent() const {
+  for (int slot = 0; slot < kMaxFigures; ++slot) {
+    if (slot_present_[slot].load()) return true;
+  }
+  return false;
+}
+
+std::vector<int> UsbPortal::PresentSlots() const {
+  std::vector<int> slots;
+  for (int slot = 0; slot < kMaxFigures; ++slot) {
+    if (slot_present_[slot].load()) slots.push_back(slot);
+  }
+  return slots;
+}
+
+std::optional<std::pair<uint16_t, uint16_t>> UsbPortal::DetectedIdVariant(int slot) const {
+  if (slot < 0 || slot >= kMaxFigures) return std::nullopt;
   std::lock_guard<std::mutex> lock(detected_mutex_);
-  return detected_id_variant_;
+  return slot_id_variant_[slot];
 }
 
 void UsbPortal::ObserveReply(const Report& report) {
   // 'S' status frame: 0x53, then 4 bytes of little-endian slot state (2 bits each, slot 0
-  // lowest), a counter, and an active flag (docs/investigation/portal-protocol.md). A real,
-  // single-figure portal only ever uses slot 0.
+  // lowest -- up to kMaxFigures slots, matching a real portal holding more than one figure at
+  // once, e.g. Giants' 2-player co-op plus items), a counter, and an active flag
+  // (docs/investigation/portal-protocol.md).
   if (report[0] == 0x53) {
-    const bool present = (report[1] & 0x03) != 0;
-    figure_present_.store(present);
-    if (!present) {
-      std::lock_guard<std::mutex> lock(detected_mutex_);
-      detected_id_variant_.reset();
+    const uint32_t states = static_cast<uint32_t>(report[1]) | (static_cast<uint32_t>(report[2]) << 8) |
+                            (static_cast<uint32_t>(report[3]) << 16) |
+                            (static_cast<uint32_t>(report[4]) << 24);
+    for (int slot = 0; slot < kMaxFigures; ++slot) {
+      const bool present = ((states >> (2 * slot)) & 0x03) != 0;
+      slot_present_[slot].store(present);
+      if (!present) {
+        std::lock_guard<std::mutex> lock(detected_mutex_);
+        slot_id_variant_[slot].reset();
+      }
     }
     return;
   }
-  // 'Q' reply to a block-1 read: 0x51, slot (with 0x10 set if present), block index, then the
-  // block's 16 data bytes. Block 1 covers global figure offsets 0x10-0x1F, where id (offset 0x10)
-  // and variant (offset 0x1C) live -- see figure_file.h's ReadFigureId/ReadFigureVariant, which
-  // read the same two fields from a full 1024-byte dump.
+  // 'Q' reply to a block-1 read: 0x51, slot (low nibble) with 0x10 set if present, block index,
+  // then the block's 16 data bytes. Block 1 covers global figure offsets 0x10-0x1F, where id
+  // (offset 0x10) and variant (offset 0x1C) live -- see figure_file.h's
+  // ReadFigureId/ReadFigureVariant, which read the same two fields from a full 1024-byte dump.
   if (report[0] == 0x51 && (report[1] & 0x10) != 0 && report[2] == 1) {
+    const int slot = report[1] & 0x0F;  // always 0-15, matching kMaxFigures
     const uint16_t id = static_cast<uint16_t>(report[3]) | (static_cast<uint16_t>(report[4]) << 8);
     const uint16_t variant =
         static_cast<uint16_t>(report[15]) | (static_cast<uint16_t>(report[16]) << 8);
     std::lock_guard<std::mutex> lock(detected_mutex_);
-    detected_id_variant_ = std::make_pair(id, variant);
+    slot_id_variant_[slot] = std::make_pair(id, variant);
   }
 }
 

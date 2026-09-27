@@ -15,6 +15,10 @@ class UsbPortal;
 // So other translation units (the overlay) can read the folder the figure picker searches.
 REXCVAR_DECLARE(std::string, portal_figures_dir);
 
+// So the overlay can distinguish "portal_mode is usb but no device was found" from "portal_mode
+// isn't usb at all" -- both show GetUsbPortal() == nullptr, and those need different messages.
+REXCVAR_DECLARE(std::string, portal_mode);
+
 namespace giantrecomp {
 
 // Creates the portal selected by the `portal_mode` cvar and routes the game's portal reads and

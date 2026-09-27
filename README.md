@@ -13,7 +13,7 @@ This is a solo, for-fun project to see whether a static recompilation of Skyland
 **Works today**
 - The game starts, renders, plays sound, and plays through Story mode with a controller.
 - A virtual Portal of Power with one of your own figures on it. Progress on that figure (levelling up, upgrades) is saved back to its `.dump` file, so it carries over between play sessions.
-- A real, physical Portal of Power over USB (`portal_mode = "usb"`) — tested with a Wii U Traptanium portal, including figure recognition (confirmed with a real Skylander). No driver changes needed; it just needs to be plugged in. The figure picker overlay (**F6**) shows the detected figure's name when a USB portal is active.
+- A real, physical Portal of Power over USB (`portal_mode = "usb"`) — tested with a Wii U Traptanium portal, including figure recognition (confirmed with a real Skylander). No driver changes needed; it just needs to be plugged in. The figure picker overlay (**F6**) shows every detected figure's name when a USB portal is active. The Xbox 360 Traptanium portal is also whitelisted but untested — no such hardware to verify against yet.
 
 **Not yet**
 - Only one figure at a time, chosen before you start. A menu to swap figures while playing is planned.
