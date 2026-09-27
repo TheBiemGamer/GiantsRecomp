@@ -46,7 +46,9 @@ std::string SlotLabel(portal::SoftwarePortal* software, int slot) {
 
 PortalOverlayDialog::PortalOverlayDialog(rex::ui::ImGuiDrawer* drawer) : ImGuiDialog(drawer) {
   Rescan();
-  RefreshRealFigureStats();
+  // Not called automatically here: a real USB read briefly blocks the game's own polling
+  // (UsbPortal::ReadAllBlocks holds a mutex shared with the game's hook thread), so it only runs
+  // on an explicit user action (the Refresh button below), never just from opening the dialog.
 }
 
 void PortalOverlayDialog::Rescan() {

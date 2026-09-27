@@ -1,6 +1,7 @@
 #include "portal/usb/usb_portal.h"
 
 #include <algorithm>
+#include <chrono>
 
 #include <rex/logging.h>
 #include <rex/string/utf8.h>
@@ -166,8 +167,26 @@ std::optional<FigureData> UsbPortal::ReadAllBlocks(int slot) {
     request[1] = static_cast<uint8_t>(slot & 0x0F);
     request[2] = static_cast<uint8_t>(block);
     SendRaw(request);
-    Report reply = ReceiveRaw();
-    if (reply[0] != 0x51 || (reply[1] & 0x10) == 0 || reply[2] != block) return std::nullopt;
+
+    // The device streams unsolicited status ('S') frames, and the game's own Write()/Read() are
+    // two separately-locked calls, so the very next report isn't guaranteed to be this block's
+    // reply. Poll for a matching one within a bounded window, forwarding everything else to
+    // ObserveReply() -- both to keep this class's own id/variant cache warm and, more importantly,
+    // so a frame this call happens to intercept (e.g. one meant for the game's own in-flight
+    // request) is at least observed rather than silently discarded.
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(200);
+    Report reply{};
+    bool matched = false;
+    while (std::chrono::steady_clock::now() < deadline) {
+      reply = ReceiveRaw();
+      if (reply[0] == 0) continue;  // timeout/no-report this poll; keep trying within the window
+      if (reply[0] == 0x51 && (reply[1] & 0x10) != 0 && reply[2] == block) {
+        matched = true;
+        break;
+      }
+      ObserveReply(reply);
+    }
+    if (!matched) return std::nullopt;
     ObserveReply(reply);
     std::copy_n(reply.begin() + 3, kBlockSize, data.begin() + block * kBlockSize);
   }
