@@ -174,4 +174,11 @@ std::optional<FigureData> SoftwarePortal::Figure(int slot) const {
   return slots_[slot].data;
 }
 
+std::optional<std::filesystem::path> SoftwarePortal::Source(int slot) const {
+  if (slot < 0 || slot >= kMaxFigures) return std::nullopt;
+  std::lock_guard<std::mutex> lock(mu_);
+  if (!slots_[slot].present) return std::nullopt;
+  return slots_[slot].source;
+}
+
 }  // namespace giantrecomp::portal

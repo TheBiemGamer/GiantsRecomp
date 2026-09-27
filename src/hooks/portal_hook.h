@@ -18,7 +18,10 @@ namespace giantrecomp {
 // writes to it. With no portal (mode `none` or an unknown value) the game keeps its own path and
 // shows "Can't find the Portal of Power". The portal lives for the whole process, because game
 // threads may still call into it while the app shuts down.
-void InstallConfiguredPortal();
+//
+// If the `portal_figures_dir` cvar is empty, it is set to `default_figures_dir` (which is created
+// if it doesn't exist yet) so the overlay has somewhere to look without the user passing a flag.
+void InstallConfiguredPortal(const std::filesystem::path& default_figures_dir);
 
 // Loads the figure at `path` and places it in `slot`; future writes to that slot save back to
 // `path`, replacing any earlier file that slot saved to. Returns false, and changes nothing, if

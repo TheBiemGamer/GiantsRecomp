@@ -396,5 +396,21 @@ int main() {
     CHECK(p.Read()[0] != 0x00);  // still answers coherently
   }
 
+  // Source(slot): the path a slot was placed with, or nullopt (no source, or empty/out of range).
+  {
+    SoftwarePortal p;
+    CHECK(!p.Source(0).has_value());   // empty slot
+    CHECK(!p.Source(-1).has_value());  // out of range
+    CHECK(!p.Source(16).has_value());  // out of range
+    const std::filesystem::path path_a = "figure_a.dump";
+    p.PlaceFigure(3, pattern(), path_a);
+    CHECK(p.Source(3) == path_a);
+    p.PlaceFigure(3, pattern());  // swap to no source
+    CHECK(!p.Source(3).has_value());
+    p.PlaceFigure(3, pattern(), path_a);
+    p.RemoveFigure(3);
+    CHECK(!p.Source(3).has_value());  // removed: forgotten, not just the figure
+  }
+
   return Finish("software_portal");
 }

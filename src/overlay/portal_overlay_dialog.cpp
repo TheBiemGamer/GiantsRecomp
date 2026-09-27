@@ -12,6 +12,7 @@
 
 #include "hooks/portal_hook.h"
 #include "portal/software/software_portal.h"
+#include "xex_verify.h"  // giantrecomp::Utf8: path -> UTF-8, never throws on non-ANSI characters
 
 namespace giantrecomp {
 
@@ -26,6 +27,14 @@ std::string Lower(std::string s) {
 std::filesystem::path Utf8ToPath(const std::string& utf8) {
   const std::u8string u8(reinterpret_cast<const char8_t*>(utf8.data()), utf8.size());
   return std::filesystem::path(u8);
+}
+
+// "Slot N: <figure name>" or "Slot N: empty".
+std::string SlotLabel(portal::SoftwarePortal* software, int slot) {
+  std::string label = "Slot " + std::to_string(slot) + ": ";
+  if (!software->Figure(slot)) return label + "empty";
+  if (auto source = software->Source(slot)) return label + Utf8(source->stem());
+  return label + "(unnamed)";
 }
 
 }  // namespace
@@ -58,13 +67,20 @@ void PortalOverlayDialog::OnDraw(ImGuiIO& io) {
     return;
   }
 
-  if (software->Figure(0)) {
-    ImGui::TextWrapped("Slot 0: a figure is on the portal.");
-    ImGui::SameLine();
-    if (ImGui::Button("Remove")) RemoveFigureFromSlot(0);
-  } else {
-    ImGui::TextWrapped("Slot 0: empty.");
+  // Slot selector: also shows every slot's current figure by name.
+  if (ImGui::BeginCombo("Slot", SlotLabel(software, selected_slot_).c_str())) {
+    for (int i = 0; i < portal::kMaxFigures; ++i) {
+      const bool selected = (i == selected_slot_);
+      if (ImGui::Selectable(SlotLabel(software, i).c_str(), selected)) selected_slot_ = i;
+      if (selected) ImGui::SetItemDefaultFocus();
+    }
+    ImGui::EndCombo();
   }
+  ImGui::SameLine();
+  const bool has_figure = software->Figure(selected_slot_).has_value();
+  ImGui::BeginDisabled(!has_figure);
+  if (ImGui::Button("Remove")) RemoveFigureFromSlot(selected_slot_);
+  ImGui::EndDisabled();
 
   ImGui::Separator();
 
@@ -111,7 +127,7 @@ void PortalOverlayDialog::OnDraw(ImGuiIO& io) {
     ImGui::TextUnformatted(entry.name.c_str());
     ImGui::SameLine(ImGui::GetWindowWidth() - 80);
     if (ImGui::Button("Place")) {
-      if (!PlaceFigureFromFile(0, entry.path)) {
+      if (!PlaceFigureFromFile(selected_slot_, entry.path)) {
         REXLOG_WARN("Portal overlay: could not place '{}'", entry.path.string());
       }
     }

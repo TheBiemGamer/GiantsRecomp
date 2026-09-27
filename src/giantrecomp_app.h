@@ -41,7 +41,9 @@ class GiantrecompApp : public rex::ReXApp {
     if (config.gpu_plugin.empty()) config.gpu_plugin = "xenos";
   }
 
-  void OnPostSetup() override { giantrecomp::InstallConfiguredPortal(); }
+  void OnPostSetup() override {
+    giantrecomp::InstallConfiguredPortal(user_data_root() / "figures");
+  }
 
   void OnConfigureFonts(ImFontAtlas* atlas) override {
     // The SDK's built-in font (ProggyTiny, forced OversampleH/V=1 + PixelSnapH) is a tiny debug

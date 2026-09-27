@@ -44,7 +44,14 @@ std::filesystem::path Utf8ToPath(const std::string& utf8) {
 
 namespace giantrecomp {
 
-void InstallConfiguredPortal() {
+void InstallConfiguredPortal(const std::filesystem::path& default_figures_dir) {
+  if (REXCVAR_GET(portal_figures_dir).empty()) {
+    std::error_code ec;
+    std::filesystem::create_directories(default_figures_dir, ec);
+    const auto u8 = default_figures_dir.u8string();
+    REXCVAR_SET(portal_figures_dir, std::string(reinterpret_cast<const char*>(u8.data()), u8.size()));
+  }
+
   const std::string text = REXCVAR_GET(portal_mode);
   const auto mode = portal::ParsePortalMode(text);
   if (!mode) {

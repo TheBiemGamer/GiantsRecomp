@@ -30,6 +30,7 @@ class SoftwarePortal : public PortalDevice {
   bool RemoveFigure(int slot);  // false if out of range or empty; also forgets the source
   bool HasFigure(int slot) const;
   std::optional<FigureData> Figure(int slot) const;
+  std::optional<std::filesystem::path> Source(int slot) const;  // nullopt if empty, out of range, or no source
 
   // Called after a successful figure write ('W' to a present slot and a valid block), with the
   // slot index, the figure's full data at that point, and the source PlaceFigure was given for
