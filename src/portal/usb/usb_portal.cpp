@@ -17,6 +17,18 @@ std::string HidErrorUtf8(hid_device* device) {
   return rex::string::to_utf8(std::u16string_view(reinterpret_cast<const char16_t*>(message)));
 }
 
+std::string HexBytes(const uint8_t* data, size_t n) {
+  static constexpr char kHex[] = "0123456789abcdef";
+  std::string out;
+  out.reserve(n * 3);
+  for (size_t i = 0; i < n; ++i) {
+    if (i) out += ' ';
+    out += kHex[data[i] >> 4];
+    out += kHex[data[i] & 0xF];
+  }
+  return out;
+}
+
 }  // namespace
 
 UsbPortal::UsbPortal() {
@@ -34,7 +46,7 @@ UsbPortal::~UsbPortal() {
   if (device_ != nullptr) hid_close(device_);
 }
 
-void UsbPortal::Write(const Report& report) {
+void UsbPortal::SendRaw(const Report& report) {
   if (device_ == nullptr) return;
   // hid_send_output_report() sends via a HID SET_REPORT control transfer -- unlike hid_write(),
   // which prefers this device's interrupt OUT endpoint and is accepted at the transport level but
@@ -48,11 +60,11 @@ void UsbPortal::Write(const Report& report) {
   }
 }
 
-Report UsbPortal::Read() {
+Report UsbPortal::ReceiveRaw() {
   if (device_ == nullptr) return Report{};
   Report report{};
-  // A short timeout keeps this from blocking the game's polling thread indefinitely if the device
-  // stops responding; an all-zero Report on timeout/failure is a shape the game already tolerates
+  // A short timeout keeps this from blocking indefinitely if the device stops responding; an
+  // all-zero Report on timeout/failure is a shape the game already tolerates
   // (docs/portal-protocol.md).
   const int bytes_read = hid_read_timeout(device_, report.data(), report.size(), 50);
   // 0 means "no report within the timeout", hidapi's normal outcome for an idle poll, not a
@@ -60,7 +72,24 @@ Report UsbPortal::Read() {
   if (bytes_read < 0 && !read_error_logged_.exchange(true)) {
     REXLOG_WARN("Portal (usb): hid_read failed: {}", HidErrorUtf8(device_));
   }
-  if (bytes_read <= 0) return Report{};
+  return bytes_read > 0 ? report : Report{};
+}
+
+void UsbPortal::Write(const Report& report) {
+  std::lock_guard<std::mutex> lock(io_mutex_);
+  if (report[0] == 0x57) {  // 'W': write one figure block -- log for offset research.
+    const int slot = report[1] & 0x0F;
+    const int block = report[2];
+    REXLOG_TRACE("Portal figure research: usb slot {} block {} write -> {}", slot, block,
+                 HexBytes(&report[3], kBlockSize));
+  }
+  SendRaw(report);
+}
+
+Report UsbPortal::Read() {
+  std::lock_guard<std::mutex> lock(io_mutex_);
+  Report report = ReceiveRaw();
+  if (report[0] == 0) return report;  // timeout/failure/no-device: nothing to observe
   ObserveReply(report);
   return report;
 }
@@ -105,6 +134,12 @@ void UsbPortal::ObserveReply(const Report& report) {
     }
     return;
   }
+  if (report[0] == 0x51 && (report[1] & 0x10) != 0) {
+    const int slot = report[1] & 0x0F;
+    const int block = report[2];
+    REXLOG_TRACE("Portal figure research: usb slot {} block {} read -> {}", slot, block,
+                 HexBytes(&report[3], kBlockSize));
+  }
   // 'Q' reply to a block-1 read: 0x51, slot (low nibble) with 0x10 set if present, block index,
   // then the block's 16 data bytes. Block 1 covers global figure offsets 0x10-0x1F, where id
   // (offset 0x10) and variant (offset 0x1C) live -- see figure_file.h's
@@ -117,6 +152,26 @@ void UsbPortal::ObserveReply(const Report& report) {
     std::lock_guard<std::mutex> lock(detected_mutex_);
     slot_id_variant_[slot] = std::make_pair(id, variant);
   }
+}
+
+std::optional<FigureData> UsbPortal::ReadAllBlocks(int slot) {
+  if (slot < 0 || slot >= kMaxFigures) return std::nullopt;
+  std::lock_guard<std::mutex> lock(io_mutex_);
+  if (device_ == nullptr) return std::nullopt;
+
+  FigureData data{};
+  for (int block = 0; block < static_cast<int>(kBlockCount); ++block) {
+    Report request{};
+    request[0] = 0x51;  // 'Q'
+    request[1] = static_cast<uint8_t>(slot & 0x0F);
+    request[2] = static_cast<uint8_t>(block);
+    SendRaw(request);
+    Report reply = ReceiveRaw();
+    if (reply[0] != 0x51 || (reply[1] & 0x10) == 0 || reply[2] != block) return std::nullopt;
+    ObserveReply(reply);
+    std::copy_n(reply.begin() + 3, kBlockSize, data.begin() + block * kBlockSize);
+  }
+  return data;
 }
 
 }  // namespace giantrecomp::portal

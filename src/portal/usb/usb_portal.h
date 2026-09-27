@@ -63,8 +63,19 @@ class UsbPortal final : public PortalDevice {
   std::optional<std::pair<uint16_t, uint16_t>> DetectedIdVariant(int slot) const;
   bool HadError() const { return write_error_logged_.load() || read_error_logged_.load(); }
 
+  // Reads all 64 blocks of the figure in `slot` directly, independent of the game's own polling.
+  // Returns nullopt on any timeout, I/O error, out-of-range slot, or no device open. Acquires
+  // io_mutex_ for the whole sequence, so it briefly blocks the game's own Write()/Read() calls --
+  // on-demand only (e.g. an overlay Refresh button), never called from a per-frame path.
+  std::optional<FigureData> ReadAllBlocks(int slot);
+
  private:
   void ObserveReply(const Report& report);
+
+  void SendRaw(const Report& report);  // unlocked -- callers hold io_mutex_
+  Report ReceiveRaw();                 // unlocked -- callers hold io_mutex_
+
+  std::mutex io_mutex_;  // serializes every raw HID transfer: Write(), Read(), ReadAllBlocks()
 
   hid_device* device_ = nullptr;
   std::atomic<bool> write_error_logged_{false};
