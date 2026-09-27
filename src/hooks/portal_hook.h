@@ -1,10 +1,16 @@
 #pragma once
 
 #include <filesystem>
+#include <string>
+
+#include <rex/cvar.h>
 
 namespace giantrecomp::portal {
 class SoftwarePortal;
 }  // namespace giantrecomp::portal
+
+// So other translation units (the overlay) can read the folder the figure picker searches.
+REXCVAR_DECLARE(std::string, portal_figures_dir);
 
 namespace giantrecomp {
 
