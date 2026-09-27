@@ -4,7 +4,19 @@
 #include <cctype>
 #include <system_error>
 
+#include "portal/figure_file.h"
+#include "portal/skylander_catalog_data.h"
+
 namespace giantrecomp::portal {
+
+std::span<const SkylanderInfo> AllSkylanders() { return kSkylanderCatalog; }
+
+const SkylanderInfo* FindSkylander(uint16_t id, uint16_t variant) {
+  for (const auto& sky : kSkylanderCatalog) {
+    if (sky.id == id && sky.variant == variant) return &sky;
+  }
+  return nullptr;
+}
 
 namespace {
 
@@ -27,6 +39,15 @@ std::string TopLevelFolder(const std::filesystem::path& root, const std::filesys
   return first->string();
 }
 
+std::string ResolveDisplayName(const std::filesystem::path& path, const std::string& fallback) {
+  auto data = LoadFigureFile(path);
+  if (!data) return fallback;
+  if (const SkylanderInfo* sky = FindSkylander(ReadFigureId(*data), ReadFigureVariant(*data))) {
+    return std::string(sky->name);
+  }
+  return fallback;
+}
+
 }  // namespace
 
 std::vector<FigureCatalogEntry> ScanFigureCatalog(const std::filesystem::path& root) {
@@ -41,7 +62,8 @@ std::vector<FigureCatalogEntry> ScanFigureCatalog(const std::filesystem::path& r
     if (!it->is_regular_file(ec) || ec) continue;
     const auto& path = it->path();
     if (Lower(path.extension().string()) != ".dump") continue;
-    entries.push_back({path.stem().string(), TopLevelFolder(root, path), path});
+    const std::string name = path.stem().string();
+    entries.push_back({name, ResolveDisplayName(path, name), TopLevelFolder(root, path), path});
   }
 
   std::sort(entries.begin(), entries.end(), [](const FigureCatalogEntry& a, const FigureCatalogEntry& b) {

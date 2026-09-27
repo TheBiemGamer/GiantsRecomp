@@ -2,6 +2,7 @@
 #include <fstream>
 
 #include "portal/figure_catalog.h"
+#include "portal/figure_file.h"
 #include "test_util.h"
 
 namespace fs = std::filesystem;
@@ -67,5 +68,72 @@ int main() {
   CHECK(entries2.size() == 6);
 
   fs::remove_all(root);
+
+  // AllSkylanders/FindSkylander: the built-in catalog is non-empty, sorted by game then name, and
+  // a known figure resolves; an unrecognized id/variant does not.
+  {
+    auto all = AllSkylanders();
+    CHECK(!all.empty());
+    const SkylanderInfo* tree_rex = FindSkylander(112, 4614);  // real catalog variant, not 0
+    CHECK(tree_rex != nullptr);
+    if (tree_rex) {
+      CHECK(tree_rex->name == "Tree Rex");
+      CHECK(tree_rex->game == "Giants");
+    }
+    CHECK(FindSkylander(0xFFFF, 0xFFFF) == nullptr);
+  }
+
+  // A real .dump file (correct id/variant bytes) resolves display_name via the catalog, even
+  // though its filename on disk is something else entirely.
+  {
+    fs::path dir = fs::temp_directory_path() / L"gr_catalog_display_name";
+    fs::remove_all(dir);
+    fs::create_directories(dir / L"2. Giants");
+    FigureData d{};
+    d[0x10] = 112 & 0xFF;
+    d[0x11] = 112 >> 8;
+    d[0x1C] = 4614 & 0xFF;
+    d[0x1D] = 4614 >> 8;  // Tree Rex (real catalog id/variant)
+    {
+      std::ofstream out(dir / L"2. Giants" / L"my_weird_filename.dump", std::ios::binary);
+      out.write(reinterpret_cast<const char*>(d.data()), d.size());
+    }
+    auto entries = ScanFigureCatalog(dir);
+    CHECK(entries.size() == 1);
+    if (!entries.empty()) {
+      CHECK(entries[0].name == "my_weird_filename");    // filename is unchanged
+      CHECK(entries[0].display_name == "Tree Rex");      // but the resolved name is correct
+    }
+    fs::remove_all(dir);
+  }
+
+  // A file with unrecognized id/variant bytes falls back to the filename for display_name.
+  {
+    fs::path dir = fs::temp_directory_path() / L"gr_catalog_unknown";
+    fs::remove_all(dir);
+    fs::create_directories(dir);
+    FigureData d{};
+    d[0x10] = 0xFF;
+    d[0x11] = 0xFF;
+    d[0x1C] = 0xFF;
+    d[0x1D] = 0xFF;
+    {
+      std::ofstream out(dir / L"Mystery.dump", std::ios::binary);
+      out.write(reinterpret_cast<const char*>(d.data()), d.size());
+    }
+    auto entries = ScanFigureCatalog(dir);
+    CHECK(entries.size() == 1);
+    if (!entries.empty()) CHECK(entries[0].display_name == "Mystery");
+    fs::remove_all(dir);
+  }
+
+  // Round-trip: a figure built by CreateBlankFigure is recognized by FindSkylander when read back.
+  {
+    FigureData created = CreateBlankFigure(110, 4614);  // Bouncer (real catalog variant)
+    const SkylanderInfo* found = FindSkylander(ReadFigureId(created), ReadFigureVariant(created));
+    CHECK(found != nullptr);
+    if (found) CHECK(found->name == "Bouncer");
+  }
+
   return Finish("figure_catalog");
 }

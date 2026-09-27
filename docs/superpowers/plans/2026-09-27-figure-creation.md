@@ -389,7 +389,7 @@ Append to `tests/figure_catalog_test.cpp`, before `fs::remove_all(root); return 
   {
     auto all = AllSkylanders();
     CHECK(!all.empty());
-    const SkylanderInfo* tree_rex = FindSkylander(112, 0);
+    const SkylanderInfo* tree_rex = FindSkylander(112, 4614);  // real catalog variant, not 0
     CHECK(tree_rex != nullptr);
     if (tree_rex) {
       CHECK(tree_rex->name == "Tree Rex");
@@ -406,7 +406,9 @@ Append to `tests/figure_catalog_test.cpp`, before `fs::remove_all(root); return 
     fs::create_directories(dir / L"2. Giants");
     FigureData d{};
     d[0x10] = 112 & 0xFF;
-    d[0x11] = 112 >> 8;  // Tree Rex
+    d[0x11] = 112 >> 8;
+    d[0x1C] = 4614 & 0xFF;
+    d[0x1D] = 4614 >> 8;  // Tree Rex (real catalog id/variant)
     {
       std::ofstream out(dir / L"2. Giants" / L"my_weird_filename.dump", std::ios::binary);
       out.write(reinterpret_cast<const char*>(d.data()), d.size());
@@ -442,7 +444,7 @@ Append to `tests/figure_catalog_test.cpp`, before `fs::remove_all(root); return 
 
   // Round-trip: a figure built by CreateBlankFigure is recognized by FindSkylander when read back.
   {
-    FigureData created = CreateBlankFigure(110, 0);  // Bouncer
+    FigureData created = CreateBlankFigure(110, 4614);  // Bouncer (real catalog variant)
     const SkylanderInfo* found = FindSkylander(ReadFigureId(created), ReadFigureVariant(created));
     CHECK(found != nullptr);
     if (found) CHECK(found->name == "Bouncer");
