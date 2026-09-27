@@ -34,6 +34,7 @@ namespace {
 
 std::atomic<giantrecomp::portal::PortalDevice*> g_portal{nullptr};
 std::atomic<giantrecomp::portal::SoftwarePortal*> g_software_portal{nullptr};
+std::atomic<giantrecomp::portal::UsbPortal*> g_usb_portal{nullptr};
 
 // portal_figure/portal_figures_dir arrive as UTF-8; convert explicitly so non-ANSI characters
 // survive (path::string() would throw for characters outside the ANSI code page).
@@ -76,6 +77,7 @@ void InstallConfiguredPortal(const std::filesystem::path& default_figures_dir) {
     // handle (used by GetSoftwarePortal() for the figure-picker overlay), and there is no
     // software portal active in this mode.
     g_portal.store(usb);
+    g_usb_portal.store(usb);
     REXLOG_INFO("Portal: usb");
     return;
   }
@@ -146,6 +148,8 @@ bool CreateAndPlaceFigure(int slot, const portal::SkylanderInfo& sky) {
 }
 
 portal::SoftwarePortal* GetSoftwarePortal() { return g_software_portal.load(); }
+
+portal::UsbPortal* GetUsbPortal() { return g_usb_portal.load(); }
 
 }  // namespace giantrecomp
 

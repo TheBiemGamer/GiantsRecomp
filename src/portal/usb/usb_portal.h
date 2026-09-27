@@ -3,6 +3,8 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <mutex>
+#include <optional>
 #include <utility>
 
 #include <hidapi.h>
@@ -45,10 +47,25 @@ class UsbPortal final : public PortalDevice {
   void Write(const Report& report) override;
   Report Read() override;
 
+  // Best-effort status, derived by passively observing replies that already flow through Read()
+  // as part of relaying the game's own polling -- no extra USB traffic, no separate poller thread
+  // competing with the game's hook thread for the device (see
+  // docs/investigation/portal-protocol.md). Reflects what the game itself has seen so far: it can
+  // lag a few seconds behind the real device, since it only updates once the game happens to poll
+  // a status frame or read block 1 (where id/variant live) on its own.
+  bool FigurePresent() const { return figure_present_.load(); }
+  std::optional<std::pair<uint16_t, uint16_t>> DetectedIdVariant() const;
+  bool HadError() const { return write_error_logged_.load() || read_error_logged_.load(); }
+
  private:
+  void ObserveReply(const Report& report);
+
   hid_device* device_ = nullptr;
   std::atomic<bool> write_error_logged_{false};
   std::atomic<bool> read_error_logged_{false};
+  std::atomic<bool> figure_present_{false};
+  mutable std::mutex detected_mutex_;
+  std::optional<std::pair<uint16_t, uint16_t>> detected_id_variant_;
 };
 
 }  // namespace giantrecomp::portal

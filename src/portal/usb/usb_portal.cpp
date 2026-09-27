@@ -62,7 +62,39 @@ Report UsbPortal::Read() {
     REXLOG_WARN("Portal (usb): hid_read failed: {}", HidErrorUtf8(device_));
   }
   if (bytes_read <= 0) return Report{};
+  ObserveReply(report);
   return report;
+}
+
+std::optional<std::pair<uint16_t, uint16_t>> UsbPortal::DetectedIdVariant() const {
+  std::lock_guard<std::mutex> lock(detected_mutex_);
+  return detected_id_variant_;
+}
+
+void UsbPortal::ObserveReply(const Report& report) {
+  // 'S' status frame: 0x53, then 4 bytes of little-endian slot state (2 bits each, slot 0
+  // lowest), a counter, and an active flag (docs/investigation/portal-protocol.md). A real,
+  // single-figure portal only ever uses slot 0.
+  if (report[0] == 0x53) {
+    const bool present = (report[1] & 0x03) != 0;
+    figure_present_.store(present);
+    if (!present) {
+      std::lock_guard<std::mutex> lock(detected_mutex_);
+      detected_id_variant_.reset();
+    }
+    return;
+  }
+  // 'Q' reply to a block-1 read: 0x51, slot (with 0x10 set if present), block index, then the
+  // block's 16 data bytes. Block 1 covers global figure offsets 0x10-0x1F, where id (offset 0x10)
+  // and variant (offset 0x1C) live -- see figure_file.h's ReadFigureId/ReadFigureVariant, which
+  // read the same two fields from a full 1024-byte dump.
+  if (report[0] == 0x51 && (report[1] & 0x10) != 0 && report[2] == 1) {
+    const uint16_t id = static_cast<uint16_t>(report[3]) | (static_cast<uint16_t>(report[4]) << 8);
+    const uint16_t variant =
+        static_cast<uint16_t>(report[15]) | (static_cast<uint16_t>(report[16]) << 8);
+    std::lock_guard<std::mutex> lock(detected_mutex_);
+    detected_id_variant_ = std::make_pair(id, variant);
+  }
 }
 
 }  // namespace giantrecomp::portal

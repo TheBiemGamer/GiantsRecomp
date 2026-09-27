@@ -13,6 +13,7 @@
 #include "hooks/portal_hook.h"
 #include "portal/figure_catalog.h"
 #include "portal/software/software_portal.h"
+#include "portal/usb/usb_portal.h"
 #include "xex_verify.h"  // giantrecomp::Utf8: path -> UTF-8, never throws on non-ANSI characters
 
 namespace giantrecomp {
@@ -54,7 +55,33 @@ void PortalOverlayDialog::Rescan() {
 void PortalOverlayDialog::OnDraw(ImGuiIO& io) {
   (void)io;
   ImGui::SetNextWindowSize(ImVec2(480, 520), ImGuiCond_FirstUseEver);
-  if (!ImGui::Begin("Portal of Power (F6)", nullptr, ImGuiWindowFlags_NoCollapse)) {
+  if (!ImGui::Begin("Portal of Power", nullptr, ImGuiWindowFlags_NoCollapse)) {
+    ImGui::End();
+    return;
+  }
+
+  if (portal::UsbPortal* usb = GetUsbPortal()) {
+    ImGui::TextWrapped("Real USB portal connected.");
+    if (usb->HadError()) {
+      ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f),
+                         "A read or write error occurred -- see the log for details.");
+    }
+    ImGui::Separator();
+    if (!usb->FigurePresent()) {
+      ImGui::TextWrapped("No figure detected on the portal.");
+    } else if (auto id_variant = usb->DetectedIdVariant()) {
+      const auto* sky = portal::FindSkylander(id_variant->first, id_variant->second);
+      if (sky) {
+        ImGui::Text("Detected: %s", std::string(sky->name).c_str());
+      } else {
+        ImGui::Text("Detected: unrecognized figure (id %u, variant %u)",
+                    static_cast<unsigned>(id_variant->first), static_cast<unsigned>(id_variant->second));
+      }
+    } else {
+      ImGui::TextWrapped(
+          "A figure is on the portal, but its identity hasn't been read yet -- give the game a "
+          "few seconds after placing it.");
+    }
     ImGui::End();
     return;
   }

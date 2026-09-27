@@ -190,10 +190,12 @@ screen, straight into Story mode's opening cutscene ("Meet Norticus") — the sa
 `docs/investigation/portal-protocol.md`'s "Verified with the real SoftwarePortal" section
 describes for the software backend with an empty portal.
 
-**Not yet independently verified**: placing a real figure on the real portal and confirming the
-game recognizes it (the second half of spec §1's success bar) — this session's testing used an
-empty portal throughout. Expected to work given the command-level protocol is now confirmed
-correct end-to-end, but not observed directly.
+**Now confirmed** (2026-09-27, later the same session): placing a real figure (Bouncer) on the
+real portal, the game recognized and loaded it correctly (HUD showed "Bouncer", level 5, in an
+actual level) — the second half of spec §1's success bar. Also confirmed via the new F6 overlay
+status panel (`src/overlay/portal_overlay_dialog.cpp`, `UsbPortal::DetectedIdVariant`), which
+independently identified the same figure by passively decoding block 1 of the replies the game's
+own polling already reads, matching the game's own HUD exactly.
 
 The `UsbPortal::ClaimInterfaceAndFindEndpoints` only requires an IN endpoint now; the OUT endpoint
 this device also advertises is unused, since all writes go through the control endpoint (0)

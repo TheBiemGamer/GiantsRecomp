@@ -9,6 +9,7 @@
 
 namespace giantrecomp::portal {
 class SoftwarePortal;
+class UsbPortal;
 }  // namespace giantrecomp::portal
 
 // So other translation units (the overlay) can read the folder the figure picker searches.
@@ -44,5 +45,9 @@ bool CreateAndPlaceFigure(int slot, const portal::SkylanderInfo& sky);
 // The active software portal, for read-only status queries (HasFigure/Figure) from the overlay.
 // nullptr if portal_mode is not "software".
 portal::SoftwarePortal* GetSoftwarePortal();
+
+// The active USB portal, for read-only status queries (FigurePresent/DetectedIdVariant) from the
+// overlay. nullptr if portal_mode is not "usb" or no device was found.
+portal::UsbPortal* GetUsbPortal();
 
 }  // namespace giantrecomp
