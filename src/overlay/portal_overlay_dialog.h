@@ -34,6 +34,7 @@ class PortalOverlayDialog : public rex::ui::ImGuiDialog {
   void RefreshRealFigureStats();
 
   std::vector<portal::FigureCatalogEntry> entries_;
+  std::vector<std::optional<portal::FigureStats>> entry_stats_;  // parallel to entries_
   std::string figures_dir_at_last_scan_;
   char filter_[128] = {};
   int selected_slot_ = 0;  // which slot Place/Remove act on

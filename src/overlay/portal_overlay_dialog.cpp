@@ -54,6 +54,15 @@ void PortalOverlayDialog::Rescan() {
   entries_ = figures_dir_at_last_scan_.empty()
                  ? std::vector<portal::FigureCatalogEntry>{}
                  : portal::ScanFigureCatalog(Utf8ToPath(figures_dir_at_last_scan_));
+  entry_stats_.clear();
+  entry_stats_.reserve(entries_.size());
+  for (const auto& entry : entries_) {
+    std::optional<portal::FigureStats> stats;
+    if (auto data = portal::LoadFigureFile(entry.path)) {
+      stats = portal::ParseFigureStats(*data);
+    }
+    entry_stats_.push_back(stats);
+  }
 }
 
 void PortalOverlayDialog::RefreshRealFigureStats() {
@@ -218,7 +227,8 @@ void PortalOverlayDialog::OnDraw(ImGuiIO& io) {
   ImGui::BeginChild("figure_list", ImVec2(0, 0), true);
   std::string last_game;
   bool section_open = false;
-  for (const auto& entry : entries_) {
+  for (size_t i = 0; i < entries_.size(); ++i) {
+    const auto& entry = entries_[i];
     if (!filter.empty() && Lower(entry.name).find(filter) == std::string::npos) continue;
     if (entry.game != last_game) {
       section_open = ImGui::CollapsingHeader(entry.game.empty() ? "(no game folder)" : entry.game.c_str(),
@@ -228,12 +238,10 @@ void PortalOverlayDialog::OnDraw(ImGuiIO& io) {
     if (!section_open) continue;
     ImGui::PushID(entry.path.string().c_str());
     ImGui::TextUnformatted(entry.display_name.c_str());
-    if (auto data = portal::LoadFigureFile(entry.path)) {
-      if (auto stats = portal::ParseFigureStats(*data)) {
-        ImGui::SameLine();
-        ImGui::TextDisabled("(Lv %u, %u gold)", static_cast<unsigned>(stats->level),
-                            static_cast<unsigned>(stats->gold));
-      }
+    if (entry_stats_[i]) {
+      ImGui::SameLine();
+      ImGui::TextDisabled("(Lv %u, %u gold)", static_cast<unsigned>(entry_stats_[i]->level),
+                          static_cast<unsigned>(entry_stats_[i]->gold));
     }
     ImGui::SameLine(ImGui::GetWindowWidth() - 80);
     if (ImGui::Button("Place")) {
