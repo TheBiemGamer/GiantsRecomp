@@ -49,6 +49,12 @@ if(REXSDK_DIR)
     target_include_directories(giantrecomp PRIVATE "${REXSDK_DIR}/thirdparty/imgui")
 endif()
 
+# Seed a fresh build dir with the settings-file template. Never overwrites an existing one: the
+# in-game F4 Settings overlay saves the user's own changes to this exact file.
+if(NOT EXISTS "${CMAKE_BINARY_DIR}/giantsrecomp.toml")
+    file(COPY_FILE "${CMAKE_CURRENT_SOURCE_DIR}/giantsrecomp.toml.example" "${CMAKE_BINARY_DIR}/giantsrecomp.toml")
+endif()
+
 # --- Pinned game executable -------------------------------------------------
 set(GIANTRECOMP_XEX_HASH_FILE "${CMAKE_CURRENT_SOURCE_DIR}/docs/game/default.xex.sha256")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${GIANTRECOMP_XEX_HASH_FILE}")
