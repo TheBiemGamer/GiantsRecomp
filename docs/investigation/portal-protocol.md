@@ -81,3 +81,51 @@ Not yet re-verified in gameplay: whether the resulting file is accepted correctl
 ## Confirmed by the author (2026-09-28)
 
 Played into chapter 2 on the Release build with `--gpu_allow_invalid_fetch_constants`: no blanking. Figure progress (Tree Rex's level, upgrades, gold) persisted correctly across quitting and relaunching. Cutscenes run well on Release. Both fixes from this session hold up in real play.
+
+## Real USB portal (Wii U, `1430:0150`), first hardware test (2026-09-27, milestone 7)
+
+*Observed*, with `portal_mode=usb` (`UsbPortal`, `src/portal/usb/usb_portal.cpp`) against the
+author's real Wii U Traptanium portal, driver unchanged (`HidUsb`, confirmed via
+`Get-PnpDevice`, `Class = HIDClass`), a temporary diagnostic build logging every `hid_write`/
+`hid_read_timeout` call:
+
+- `hid_init()` and `hid_open(0x1430, 0x0150, nullptr)` both succeed immediately. The log shows
+  `Portal: usb` (not the no-device warning), and the process runs with no crash and no `FATAL`
+  line for the whole session.
+- The real device's raw HID report is **32 bytes**, not 64. Every `hid_write` of our
+  65-byte `EncodeOutputReport` buffer (1 report-ID byte + 64, the last 32 of which are our
+  zero-padding) returns `33` bytes written — i.e. exactly `1 (report ID) + 32 (the device's real
+  report size)`, with the extra padding silently dropped. Every `hid_read_timeout` call returns
+  exactly `32` bytes. `kDeviceReportSize = 64` (`usb_report_codec.h`) was carried over from Cemu's
+  `SkylanderUSB` class (`Skylander.h`, `std::array<uint8, 64>`), which turns out to describe
+  Cemu's own **virtual/emulated** portal's internal buffer size, not the real Wii U hardware's
+  actual USB report size. *Inferred*: for this device, 32 in and 32 out is correct; the
+  32-to-64-and-back adaptation this milestone built is unnecessary for it (may still matter for
+  the untested Xbox 360 portal, `1430:1F17`, which is a different physical device on the
+  whitelist).
+- Over 400 consecutive read/write cycles (several seconds, well past the title screen), **every**
+  write was `52` (`'R'`, ready poll) and **every** read returned a frame starting with `53`
+  (`'S'`, status), with bytes 1-4 zero (no figure present, as expected) and byte 5 a steadily
+  incrementing counter — a correctly-shaped, live status stream from the real firmware. The game
+  never sent `41` (`'A'`, activate): per the milestone-4 findings above ("The game repeats `R`
+  about every 300ms until it gets an answer, then moves on to `A`"), the game is waiting for a
+  reply shaped like `52 02 1B` to its `R`, and in 400 samples that reply never appeared — only the
+  continuous, unsolicited status stream did.
+- End result: "Can't find the Portal of Power" at the title screen, indefinitely.
+
+**Not yet known**: why the real device never appears to answer `R` directly, when the milestone-4
+spike (built from a console-side capture plus RPCS3/Cemu reference reading, not a real-hardware
+USB capture) assumed a request/reply model where each written command gets one queued reply
+drained by the next read — matching how `SoftwarePortal` is built today. The real device instead
+looks like it just streams unsolicited status input reports regardless of what's written to it.
+
+*Inferred*, not yet tested: Cemu's own real-hardware backend (`BackendLibusb.cpp`) sends outgoing
+commands two different ways depending on call site — plain interrupt OUT transfers
+(`DeviceLibusb::Write`, what `hid_write` also does) for some paths, but a HID class `SET_REPORT`
+**control** transfer (`DeviceLibusb::SetReport`, endpoint 0, not the interrupt OUT endpoint) for
+others. If this device's command report is defined as a Feature report rather than an Output
+report in its HID report descriptor, `hid_write()` (Output report semantics) would be the wrong
+call entirely, and hidapi's `hid_send_feature_report()` (control-transfer, Feature report
+semantics) would be the one to try instead — cheap to test, since it only changes one call site in
+`UsbPortal::Write`. Not attempted in this pass; flagged here for the next one rather than guessed
+at inline.
