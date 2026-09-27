@@ -6,9 +6,9 @@
 
 namespace giantrecomp::portal {
 
-// Generated 2026-09-27 from the user's own dump collection (Dumps Clean); see
-// docs/superpowers/specs/2026-09-27-figure-creation-design.md §2 for how this was built.
-// Sorted by game release order (Spyro's Adventure -> Imaginators), then name.
+// Generated 2026-09-27 by scanning the id/variant/game of every .dump file
+// Sourced from the Skylanders Ultimate NFC Pack V15
+// (https://skylandersnfc.github.io/Skylanders-Ultimate-NFC-Pack/)
 inline constexpr std::array<SkylanderInfo, 648> kSkylanderCatalog = {{
     {200, 0, "Anvil Rain", "Spyro's Adventure"},
     {4, 0, "Bash", "Spyro's Adventure"},

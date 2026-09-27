@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <system_error>
+#include <unordered_map>
 
 #include "portal/figure_file.h"
 #include "portal/skylander_catalog_data.h"
@@ -39,6 +40,35 @@ std::string TopLevelFolder(const std::filesystem::path& root, const std::filesys
   return first->string();
 }
 
+// Strips a leading "N. " release-numbering prefix and normalizes "_s " to "'s ", so a folder
+// named either "1. Spyro's Adventure" (a user's own numbered dump folder) or plain "Spyro's
+// Adventure" (as CreateAndPlaceFigure names it) both match the same catalog game name.
+std::string NormalizeGameName(std::string_view raw) {
+  std::string s(raw);
+  size_t i = 0;
+  while (i < s.size() && std::isdigit(static_cast<unsigned char>(s[i]))) ++i;
+  if (i > 0 && i < s.size() && s[i] == '.') {
+    s.erase(0, i + 1);
+    while (!s.empty() && s.front() == ' ') s.erase(0, 1);
+  }
+  size_t pos = s.find("_s ");
+  if (pos != std::string::npos) s.replace(pos, 3, "'s ");
+  return s;
+}
+
+// Release order for the six mainline games, so the picker and creation lists both group games
+// chronologically instead of alphabetically. Unrecognized game names (a custom folder, or "no
+// game" for a loose file) sort after all known games, so nothing is hidden or misplaced.
+int GameReleaseRank(const std::string& game) {
+  if (game.empty()) return 0;
+  static const std::unordered_map<std::string, int> kOrder = {
+      {"Spyro's Adventure", 1}, {"Giants", 2},   {"Swap Force", 3},
+      {"Trap Team", 4},         {"SuperChargers", 5}, {"Imaginators", 6},
+  };
+  auto it = kOrder.find(NormalizeGameName(game));
+  return it != kOrder.end() ? it->second : 999;
+}
+
 std::string ResolveDisplayName(const std::filesystem::path& path, const std::string& fallback) {
   auto data = LoadFigureFile(path);
   if (!data) return fallback;
@@ -67,6 +97,8 @@ std::vector<FigureCatalogEntry> ScanFigureCatalog(const std::filesystem::path& r
   }
 
   std::sort(entries.begin(), entries.end(), [](const FigureCatalogEntry& a, const FigureCatalogEntry& b) {
+    const int ra = GameReleaseRank(a.game), rb = GameReleaseRank(b.game);
+    if (ra != rb) return ra < rb;
     const auto ag = Lower(a.game), bg = Lower(b.game);
     if (ag != bg) return ag < bg;
     return Lower(a.name) < Lower(b.name);

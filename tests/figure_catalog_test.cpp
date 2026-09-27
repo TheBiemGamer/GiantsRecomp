@@ -69,6 +69,23 @@ int main() {
 
   fs::remove_all(root);
 
+  // Games sort by release order, not alphabetically -- "Trap Team" (4th) must come before
+  // "Imaginators" (6th), even though "Imaginators" sorts first alphabetically. Unprefixed folder
+  // names (as CreateAndPlaceFigure makes them) are recognized the same as numbered ones.
+  {
+    fs::path order_root = fs::temp_directory_path() / L"gr_catalog_order";
+    fs::remove_all(order_root);
+    Touch(order_root / L"Imaginators" / L"Ember.dump");
+    Touch(order_root / L"Trap Team" / L"Food Fight.dump");
+    auto ordered = ScanFigureCatalog(order_root);
+    CHECK(ordered.size() == 2);
+    if (ordered.size() == 2) {
+      CHECK(ordered[0].game == "Trap Team");
+      CHECK(ordered[1].game == "Imaginators");
+    }
+    fs::remove_all(order_root);
+  }
+
   // AllSkylanders/FindSkylander: the built-in catalog is non-empty, sorted by game then name, and
   // a known figure resolves; an unrecognized id/variant does not.
   {

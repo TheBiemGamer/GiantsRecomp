@@ -152,12 +152,15 @@ void PortalOverlayDialog::OnDraw(ImGuiIO& io) {
   const std::string filter = Lower(filter_);
   ImGui::BeginChild("figure_list", ImVec2(0, 0), true);
   std::string last_game;
+  bool section_open = false;
   for (const auto& entry : entries_) {
     if (!filter.empty() && Lower(entry.name).find(filter) == std::string::npos) continue;
     if (entry.game != last_game) {
-      ImGui::SeparatorText(entry.game.empty() ? "(no game folder)" : entry.game.c_str());
+      section_open = ImGui::CollapsingHeader(entry.game.empty() ? "(no game folder)" : entry.game.c_str(),
+                                              ImGuiTreeNodeFlags_DefaultOpen);
       last_game = entry.game;
     }
+    if (!section_open) continue;
     ImGui::PushID(entry.path.string().c_str());
     ImGui::TextUnformatted(entry.display_name.c_str());
     ImGui::SameLine(ImGui::GetWindowWidth() - 80);
