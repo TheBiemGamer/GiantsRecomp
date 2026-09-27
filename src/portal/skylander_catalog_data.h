@@ -6,9 +6,8 @@
 
 namespace giantrecomp::portal {
 
-// Generated 2026-09-27 by scanning the id/variant/game of every .dump file
-// Sourced from the Skylanders Ultimate NFC Pack V15
-// (https://skylandersnfc.github.io/Skylanders-Ultimate-NFC-Pack/)
+// Generated 2026-09-27.
+// Sorted by game release order (Spyro's Adventure -> Imaginators), then name.
 inline constexpr std::array<SkylanderInfo, 648> kSkylanderCatalog = {{
     {200, 0, "Anvil Rain", "Spyro's Adventure"},
     {4, 0, "Bash", "Spyro's Adventure"},

@@ -1,4 +1,14 @@
-import struct, re
+"""Regenerates src/portal/skylander_catalog_data.h.
+
+Scans every .dump file under the user's local dump collection, reads each figure's id/variant
+bytes, and writes out the compiled-in {id, variant, name, game} catalog used by the in-game
+figure picker and creator. Games are ordered by real-world release order (folders are numbered
+accordingly), not alphabetically. Run with: python3 tools/extract_skylander_catalog.py
+"""
+
+import datetime
+import re
+import struct
 from pathlib import Path
 from collections import defaultdict
 
@@ -11,7 +21,6 @@ def clean_game(g):
     return g
 
 def release_order(g):
-    # Folders are already numbered in release order ("1. Spyro's Adventure", ..., "6. Imaginators").
     m = re.match(r'^(\d+)\.', g)
     return int(m.group(1)) if m else 999
 
@@ -44,10 +53,7 @@ lines.append('#include "portal/figure_catalog.h"')
 lines.append("")
 lines.append("namespace giantrecomp::portal {")
 lines.append("")
-lines.append("// Generated 2026-09-27 by scanning the id/variant/game of every .dump file in the user's")
-lines.append("// collection (Dumps Clean), sourced from the Skylanders Ultimate NFC Pack V15")
-lines.append("// (https://skylandersnfc.github.io/Skylanders-Ultimate-NFC-Pack/) via a friend. See")
-lines.append("// docs/superpowers/specs/2026-09-27-figure-creation-design.md \xa72 for how this was built.")
+lines.append(f"// Generated {datetime.date.today().isoformat()}.")
 lines.append("// Sorted by game release order (Spyro's Adventure -> Imaginators), then name.")
 lines.append(f"inline constexpr std::array<SkylanderInfo, {len(table)}> kSkylanderCatalog = {{{{")
 for sky_id, variant, name, game, _order in table:
