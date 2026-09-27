@@ -101,5 +101,94 @@ int main() {
     if (loaded) CHECK((*loaded)[255] == 255);
   }
 
+  // ReadFigureId/ReadFigureVariant read the little-endian id/variant bytes.
+  {
+    FigureData d{};
+    d[0x10] = 0x70;
+    d[0x11] = 0x00;  // id 0x0070 = 112 (Tree Rex)
+    d[0x1C] = 0x02;
+    d[0x1D] = 0x16;  // variant 0x1602
+    CHECK(ReadFigureId(d) == 112);
+    CHECK(ReadFigureVariant(d) == 0x1602);
+  }
+
+  // CreateBlankFigure (fixed-serial overload) produces the exact byte layout from the design spec.
+  {
+    FigureData d = CreateBlankFigure(112, 0, {0x11, 0x22, 0x33, 0x44});
+    CHECK(d[0] == 0x11);
+    CHECK(d[1] == 0x22);
+    CHECK(d[2] == 0x33);
+    CHECK(d[3] == 0x44);
+    CHECK(d[4] == (0x11 ^ 0x22 ^ 0x33 ^ 0x44));  // BCC
+    CHECK(d[5] == 0x81);
+    CHECK(d[6] == 0x01);
+    CHECK(d[7] == 0x0F);
+    CHECK(ReadFigureId(d) == 112);
+    CHECK(ReadFigureVariant(d) == 0);
+    // CRC16-CCITT(init 0xFFFF, poly 0x1021) over bytes 0x00-0x1D, computed independently here.
+    uint16_t crc = 0xFFFF;
+    for (size_t i = 0; i < 0x1E; ++i) {
+      crc ^= static_cast<uint16_t>(d[i]) << 8;
+      for (int bit = 0; bit < 8; ++bit) {
+        crc = (crc & 0x8000) ? static_cast<uint16_t>((crc << 1) ^ 0x1021)
+                              : static_cast<uint16_t>(crc << 1);
+      }
+    }
+    CHECK(d[0x1E] == (crc & 0xFF));
+    CHECK(d[0x1F] == (crc >> 8));
+    // Sector 0 trailer access bits.
+    CHECK(d[0x36] == 0x69);
+    CHECK(d[0x37] == 0x0F);
+    CHECK(d[0x38] == 0x0F);
+    CHECK(d[0x39] == 0x0F);
+    // Sector 1 trailer access bits (differ from sector 0).
+    CHECK(d[0x76] == 0x69);
+    CHECK(d[0x77] == 0x08);
+    CHECK(d[0x78] == 0x0F);
+    CHECK(d[0x79] == 0x7F);
+    // Sector 15 (last) trailer access bits, same pattern as sector 1.
+    CHECK(d[0x3F6] == 0x69);
+    CHECK(d[0x3F7] == 0x08);
+    CHECK(d[0x3F8] == 0x0F);
+    CHECK(d[0x3F9] == 0x7F);
+    // Untouched byte stays zero.
+    CHECK(d[0x20] == 0);
+  }
+
+  // The random-serial overload produces a loadable, self-consistent figure (BCC/CRC correct);
+  // two calls give different serials (overwhelmingly likely with 4 random bytes).
+  {
+    FigureData a = CreateBlankFigure(4, 0);
+    FigureData b = CreateBlankFigure(4, 0);
+    CHECK(a[4] == (a[0] ^ a[1] ^ a[2] ^ a[3]));
+    bool any_serial_byte_differs = a[0] != b[0] || a[1] != b[1] || a[2] != b[2] || a[3] != b[3];
+    CHECK(any_serial_byte_differs);
+  }
+
+  // UniqueFigurePath: a free name comes back unchanged.
+  {
+    fs::path dir = fs::temp_directory_path() / L"gr_unique_path";
+    fs::remove_all(dir);
+    fs::create_directories(dir);
+    CHECK(UniqueFigurePath(dir, "Tree Rex") == dir / L"Tree Rex.dump");
+
+    // An existing file forces " (2)", then " (3)" on the next collision.
+    { std::ofstream(dir / L"Tree Rex.dump", std::ios::binary) << "x"; }
+    CHECK(UniqueFigurePath(dir, "Tree Rex") == dir / L"Tree Rex (2).dump");
+    { std::ofstream(dir / L"Tree Rex (2).dump", std::ios::binary) << "x"; }
+    CHECK(UniqueFigurePath(dir, "Tree Rex") == dir / L"Tree Rex (3).dump");
+
+    // A name that already contains parentheses (a real catalog entry, e.g. "Bash (Series 2)").
+    CHECK(UniqueFigurePath(dir, "Bash (Series 2)") == dir / L"Bash (Series 2).dump");
+
+    // A directory that does not exist yet: the first name is always free, nothing is created.
+    fs::path missing_dir = fs::temp_directory_path() / L"gr_unique_path_missing";
+    fs::remove_all(missing_dir);
+    CHECK(UniqueFigurePath(missing_dir, "Spyro") == missing_dir / L"Spyro.dump");
+    CHECK(!fs::exists(missing_dir));
+
+    fs::remove_all(dir);
+  }
+
   return Finish("figure_file");
 }

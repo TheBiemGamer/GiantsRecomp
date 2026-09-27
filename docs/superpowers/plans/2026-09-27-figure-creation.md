@@ -191,10 +191,10 @@ Append to `tests/figure_file_test.cpp`, just before the final `return Finish("fi
     CHECK(d[0x78] == 0x0F);
     CHECK(d[0x79] == 0x7F);
     // Sector 15 (last) trailer access bits, same pattern as sector 1.
-    CHECK(d[0x1F76] == 0x69);
-    CHECK(d[0x1F77] == 0x08);
-    CHECK(d[0x1F78] == 0x0F);
-    CHECK(d[0x1F79] == 0x7F);
+    CHECK(d[0x3F6] == 0x69);
+    CHECK(d[0x3F7] == 0x08);
+    CHECK(d[0x3F8] == 0x0F);
+    CHECK(d[0x3F9] == 0x7F);
     // Untouched byte stays zero.
     CHECK(d[0x20] == 0);
   }
