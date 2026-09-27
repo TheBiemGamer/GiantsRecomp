@@ -17,7 +17,7 @@ This is a solo, for-fun project to see whether a static recompilation of Skyland
 **Not yet**
 - Only one figure at a time, chosen before you start. A menu to swap figures while playing is planned.
 - Real portals over USB (Wii U and Xbox 360 Traptanium portals are the targets).
-- It can be slow. The build tested so far is unoptimized, so expect stutter the first time an effect appears, cutscenes that lag, and the screen occasionally going blank. An optimized build is planned.
+- It can be slow, especially in the everyday (Debug) build (see [Playing](#playing) for the faster Release build). Expect stutter the first time an effect appears in a scene; it should be smoother the second time. Cutscenes are the heaviest part and lag the most.
 - Keyboard and mouse. Use a controller.
 - Modes other than Story have not been tested. Linux and macOS are not supported.
 
@@ -61,16 +61,19 @@ cmake --build --preset win-amd64-debug
 
 The second command converts *your* `default.xex` into C++ code on your own machine. That generated code is never uploaded. The third command is needed so the build notices it.
 
+**Optional, but recommended for actually playing:** repeat the same four steps with `win-amd64-release` instead of `win-amd64-debug`. The Release build is optimized and noticeably smoother; use Debug only if something crashes and you want to capture more detail for a bug report.
+
 ## Playing
 
-Run the game from the project folder:
+Run the game from the project folder (`out\build\win-amd64-release` if you built Release, `win-amd64-debug` otherwise):
 
 ```
-out\build\win-amd64-debug\giantrecomp.exe --game_data_root rom --portal_figure "C:\path\to\Tree Rex.dump"
+out\build\win-amd64-release\giantrecomp.exe --game_data_root rom --portal_figure "C:\path\to\Tree Rex.dump" --gpu_allow_invalid_fetch_constants
 ```
 
 - Press **A** at the title screen, then choose **Story** and a slot marked **NEW**. To quit, close the window.
 - `--portal_figure <file>` puts one of your figure dumps on the virtual portal. **The game's changes to the figure are saved back to this exact file as you play**, the same as a real portal would. Use a copy if you want to keep the original untouched.
+- `--gpu_allow_invalid_fetch_constants` works around a GPU quirk that can otherwise make parts of the scene, or the whole screen, render blank. Recommended until the underlying cause is fixed (see `docs/investigation/boot-issues.md`).
 - `--portal_mode software` (the default) uses the virtual portal. `--portal_mode none` uses no portal, and the game then says it can't find one.
 - `--portal_test_figure` puts an all-zero test figure on the portal. The game reports it as a problem toy.
 
