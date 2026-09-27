@@ -12,6 +12,8 @@
 
 #include "hooks/portal_hook.h"
 #include "portal/figure_catalog.h"
+#include "portal/figure_file.h"
+#include "portal/figure_stats.h"
 #include "portal/portal_mode.h"
 #include "portal/software/software_portal.h"
 #include "portal/usb/usb_portal.h"
@@ -44,6 +46,7 @@ std::string SlotLabel(portal::SoftwarePortal* software, int slot) {
 
 PortalOverlayDialog::PortalOverlayDialog(rex::ui::ImGuiDrawer* drawer) : ImGuiDialog(drawer) {
   Rescan();
+  RefreshRealFigureStats();
 }
 
 void PortalOverlayDialog::Rescan() {
@@ -51,6 +54,19 @@ void PortalOverlayDialog::Rescan() {
   entries_ = figures_dir_at_last_scan_.empty()
                  ? std::vector<portal::FigureCatalogEntry>{}
                  : portal::ScanFigureCatalog(Utf8ToPath(figures_dir_at_last_scan_));
+}
+
+void PortalOverlayDialog::RefreshRealFigureStats() {
+  real_figure_stats_.clear();
+  portal::UsbPortal* usb = GetUsbPortal();
+  if (!usb) return;
+  for (int slot : usb->PresentSlots()) {
+    if (auto blocks = ReadRealFigureBlocks(slot)) {
+      if (auto stats = portal::ParseFigureStats(*blocks)) {
+        real_figure_stats_[slot] = *stats;
+      }
+    }
+  }
 }
 
 void PortalOverlayDialog::OnDraw(ImGuiIO& io) {
@@ -67,6 +83,8 @@ void PortalOverlayDialog::OnDraw(ImGuiIO& io) {
       ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f),
                          "A read or write error occurred -- see the log for details.");
     }
+    ImGui::Separator();
+    if (ImGui::Button("Refresh")) RefreshRealFigureStats();
     ImGui::Separator();
     const std::vector<int> present_slots = usb->PresentSlots();
     if (present_slots.empty()) {
@@ -86,6 +104,12 @@ void PortalOverlayDialog::OnDraw(ImGuiIO& io) {
           }
         } else {
           ImGui::Text("Slot %d: figure detected, identity not read yet", slot);
+        }
+        if (auto it = real_figure_stats_.find(slot); it != real_figure_stats_.end()) {
+          ImGui::Text("  Level %u, %u gold, \"%s\"", static_cast<unsigned>(it->second.level),
+                      static_cast<unsigned>(it->second.gold), it->second.nickname.c_str());
+        } else {
+          ImGui::TextDisabled("  (press Refresh to read level/gold/nickname)");
         }
       }
     }
@@ -204,6 +228,13 @@ void PortalOverlayDialog::OnDraw(ImGuiIO& io) {
     if (!section_open) continue;
     ImGui::PushID(entry.path.string().c_str());
     ImGui::TextUnformatted(entry.display_name.c_str());
+    if (auto data = portal::LoadFigureFile(entry.path)) {
+      if (auto stats = portal::ParseFigureStats(*data)) {
+        ImGui::SameLine();
+        ImGui::TextDisabled("(Lv %u, %u gold)", static_cast<unsigned>(stats->level),
+                            static_cast<unsigned>(stats->gold));
+      }
+    }
     ImGui::SameLine(ImGui::GetWindowWidth() - 80);
     if (ImGui::Button("Place")) {
       if (!PlaceFigureFromFile(selected_slot_, entry.path)) {
