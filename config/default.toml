@@ -114,3 +114,19 @@ labels = [0x82169400, 0x82169410, 0x82169598, 0x82169720, 0x821698A8, 0x82169A30
 0x824BA590 = { size = 24 }
 0x824BA5A8 = { size = 24 }
 0x824BA5C0 = { size = 24 }
+# Camera-side frustum setup: checks (float)field_0xb0 < (float)field_0xb1 (orientation),
+# computes an angle field (+40.0, clamped to max 180.0, scaled by a DAT_ constant ~=
+# 0.0174533 = pi/180 -- degrees-to-radians), then calls BuildPerspectiveProjectionMatrix
+# twice with frustum bounds derived from camera fields. Found by searching for the SD/HD
+# resolution constant pair from the video-mode->resolution-bucket constructor
+# (Function_822FDDC0), then verifying via its actual float constants rather than trusting
+# the raw scalar hit (which also matches unrelated pointer-offset math elsewhere).
+0x821984B0 = { name = "ComputeCameraFrustumBounds" }
+# Builds a standard off-center perspective/frustum projection matrix (glFrustum /
+# D3DXMatrixPerspectiveOffCenter form) from 5 float args (left, right, bottom, top, near or
+# similar) into a 16-float 4x4 output matrix -- confirmed from the raw PowerPC at 0x822d0198
+# (Ghidra had mis-bounded this as starting at 0x822d0240, which is actually just its own
+# epilogue/FPR-restore tail call): (right+left)/(right-left), (top+bottom)/(top-bottom), and
+# the perspective Z-scale/translate terms are all present verbatim. Called from
+# ComputeCameraFrustumBounds; the [0][0]/[1][1] scale terms are where aspect ratio enters.
+0x822D0198 = { name = "BuildPerspectiveProjectionMatrix" }
