@@ -164,6 +164,9 @@ switch ($Command) {
         $env:JAVA_HOME = Get-JavaHome
         $env:GHIDRA_INSTALL_DIR = Get-GhidraInstallDir
         python3 (Join-Path $RepoRoot "tools\ghidra_dump_function.py") $ProjectDir $ProjectName $Rest[0]
+        if ($LASTEXITCODE -ne 0) {
+            throw "ghidra_dump_function.py failed with exit code $LASTEXITCODE"
+        }
     }
     "rename" {
         if ($Rest.Count -lt 2 -or $Rest.Count % 2 -ne 0) {
@@ -174,5 +177,8 @@ switch ($Command) {
         $tomlPath = Join-Path $RepoRoot "config\default.toml"
         $scriptArgs = @($ProjectDir, $ProjectName, $tomlPath) + $Rest
         python3 (Join-Path $RepoRoot "tools\ghidra_rename_and_export.py") @scriptArgs
+        if ($LASTEXITCODE -ne 0) {
+            throw "ghidra_rename_and_export.py failed with exit code $LASTEXITCODE"
+        }
     }
 }
