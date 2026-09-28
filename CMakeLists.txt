@@ -105,6 +105,12 @@ add_executable(giantrecomp_xexcheck src/tools/xex_check_cli.cpp)
 target_link_libraries(giantrecomp_xexcheck PRIVATE giantrecomp_verify)
 target_compile_definitions(giantrecomp_xexcheck PRIVATE GIANTRECOMP_XEX_SHA256="${GIANTRECOMP_XEX_SHA256}")
 
+# Process-boundary test: runs the actual built giantrecomp_xexcheck.exe against a non-ASCII path to
+# catch argv narrowing (a plain main(argc, char**) loses characters outside the system code page on
+# Windows). Depends on giantrecomp_xexcheck existing in the same output directory at test time.
+add_executable(xex_check_cli_argv_test tests/xex_check_cli_argv_test.cpp)
+add_test(NAME xex_check_cli_argv COMMAND xex_check_cli_argv_test)
+
 add_executable(xex_check_exit_code_test tests/xex_check_exit_code_test.cpp)
 target_include_directories(xex_check_exit_code_test PRIVATE src)
 add_test(NAME xex_check_exit_code COMMAND xex_check_exit_code_test)

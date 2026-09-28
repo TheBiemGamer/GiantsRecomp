@@ -21,7 +21,9 @@ install locations and reports clearly if it can't find `ISCC.exe`.
 
 - Fresh, clean Windows VM (no Visual Studio/CMake/Ninja installed) — install with a real ISO, and
   separately with an already-extracted folder; confirm the game launches both ways.
-- A wrong-version `default.xex` is rejected before any extraction, with a clear message.
+- A wrong-version `default.xex` is rejected with a clear message -- before any copying for an
+  already-extracted folder; after the (unavoidable) full extraction for an ISO, since extract-xiso
+  has no way to check the version without extracting first.
 - Re-running the installer over an existing install preserves `rom/`, `giantsrecomp.toml`, and
   saves, and only replaces the binary.
 - Uninstalling leaves `rom/` and the toml in place unless the opt-in prompt is answered "Yes";

@@ -97,4 +97,4 @@ This project stands on other people's work.
 
 The code and documentation in this repository are released under the [MIT license](LICENSE). That does not cover the game or its data, which you must own and supply yourself, or the third-party components in `thirdparty/`, which keep their own licenses.
 
-This is an unofficial fan project. It is not affiliated with, endorsed by, or connected to Activision, Toys for Bob, or the owners of Skylanders. Skylanders and related names are trademarks of their owners. Nothing from the game is distributed here.
+This is an unofficial fan project. It is not affiliated with, endorsed by, or connected to Activision, Toys for Bob, or the owners of Skylanders. Skylanders and related names are trademarks of their owners. No game data is distributed here; release binaries contain recompiled code only.
