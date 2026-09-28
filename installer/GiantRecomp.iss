@@ -222,6 +222,37 @@ begin
   SaveStringToFile(DestPath, Contents, False);
 end;
 
+// True when {app}\rom\default.xex already exists and passes the fingerprint check -- the signal
+// used to treat this run as an update rather than a fresh install (spec's "Update runs" section).
+function HasValidExistingRom: Boolean;
+var
+  ExistingXex, XexCheckExe: String;
+  ResultCode: Integer;
+begin
+  Result := False;
+  ExistingXex := ExpandConstant('{app}') + '\rom\default.xex';
+  if not FileExists(ExistingXex) then Exit;
+
+  XexCheckExe := ExpandConstant('{tmp}') + '\giantrecomp_xexcheck.exe';
+  ExtractTemporaryFile('giantrecomp_xexcheck.exe');
+  Result := Exec(XexCheckExe, '"' + ExistingXex + '"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+    and (ResultCode = 0);
+end;
+
+// RomPage is always skipped when a valid rom/ already exists. SettingsPage is only skipped when
+// the toml ALSO still exists -- if a user deleted just giantsrecomp.toml (Review Focus: this
+// project's own docs/build.md notes settings are user-editable), skipping this page too would
+// leave the install with rom/ but no settings file at all. Skipping settings independently of the
+// rom check lets WriteSettingsFile (Task 6) regenerate a fresh default file for that case.
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := False;
+  if PageID = RomPage.ID then
+    Result := HasValidExistingRom;
+  if PageID = SettingsPage.ID then
+    Result := HasValidExistingRom and FileExists(ExpandConstant('{app}') + '\giantsrecomp.toml');
+end;
+
 procedure InitializeWizard;
 begin
   RomPage := CreateCustomPage(wpSelectDir, 'Game Files',
@@ -348,4 +379,29 @@ begin
     MsgBox(ErrorMsg, mbError, MB_OK)
   else
     RomStatusLabel.Caption := 'Done.';
+end;
+
+var
+  DeleteRomAndSettingsOnUninstall: Boolean;
+
+function InitializeUninstall: Boolean;
+begin
+  Result := True;
+  DeleteRomAndSettingsOnUninstall := False;
+  // WizardSilent-equivalent for the uninstaller: never block on a dialog nobody can answer during
+  // an unattended uninstall (e.g. `unins000.exe /VERYSILENT`) -- default to "do not delete".
+  if UninstallSilent then Exit;
+
+  if MsgBox('Also delete the extracted game files and settings (rom\ and giantsrecomp.toml)?' + #13#10 +
+      'Your saves are stored separately and are never deleted.',
+      mbConfirmation, MB_YESNO) = IDYES then
+    DeleteRomAndSettingsOnUninstall := True;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if (CurUninstallStep = usPostUninstall) and DeleteRomAndSettingsOnUninstall then begin
+    DelTree(ExpandConstant('{app}') + '\rom', True, True, True);
+    DeleteFile(ExpandConstant('{app}') + '\giantsrecomp.toml');
+  end;
 end;
