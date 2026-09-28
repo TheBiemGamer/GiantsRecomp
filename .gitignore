@@ -7,3 +7,5 @@
 /scratch/
 /.worktrees/
 /dist
+/installer/staging/
+/installer/Output/

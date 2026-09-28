@@ -1,0 +1,5 @@
+This installer does not include Skylanders Giants or any of its data.
+
+You will need your own legal copy of the Xbox 360 disc, either as an ISO file or an
+already-extracted folder. Only version 1.0 (USA or Europe) is supported -- the next step checks
+this automatically before copying any files.
