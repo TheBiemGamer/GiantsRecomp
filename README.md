@@ -21,7 +21,7 @@ This is a solo, for-fun project to see whether a static recompilation of Skyland
 
 **Not yet**
 - It can be slow, especially in the Debug build (see [Playing](#playing) for the faster Release build). Expect stutter the first time an effect appears in a scene; it should be smoother the second time. Cutscenes are the heaviest part and lag the most.
-- Keyboard and mouse. Use a controller.
+- Keyboard/mouse controller emulation exists (`mnk_mode`, on by default) and is playable, but is much less tested than a real controller — see [Keybinds](#keybinds).
 - Modes other than Story have not been tested.
 - **Linux builds and runs** (see [Setup](docs/development.md#setup)), but it's newer and rougher than the Windows build: it's noticeably slower than Windows even on the same hardware, and there's an unresolved rendering bug where the screen renders with an incorrect red tint from the title screen onward. On a laptop with both an integrated and a discrete GPU, also check the `vulkan_device` tip in [Settings file](#settings-file) — the automatic GPU pick has no preference for the discrete GPU and can end up on the weaker one. macOS has build presets but hasn't been tried by anyone.
 
@@ -70,10 +70,50 @@ Copy [`giantsrecomp.toml.example`](giantsrecomp.toml.example) next to `giantsrec
 - `resolution`: sets the startup window size, e.g. `"3440x1440"` for an ultrawide monitor or `"4k"`. The window and internal render resolution use this size in full. Giants itself only ever ran at 16:9 or 4:3 on real Xbox 360 hardware, so anything else is pillarboxed/letterboxed to the nearest of those (matching real console output) rather than stretched — full ultrawide/wide-FOV gameplay is planned but not implemented yet.
 - `ui_scale`: scales the ImGui overlays (**F3**/**F4**/**F6**/**F7**, console) font size and widget sizing. `1.0` (the default) is unchanged; try `1.5` or higher if the overlay text looks too small on a large or high-resolution monitor.
 - `vulkan_device`: picks which GPU renders the game by index, for a PC with more than one (e.g. a laptop with both an integrated and a discrete GPU). `-1` (the default) auto-selects, but the auto-pick has no preference for the discrete GPU — if performance is much worse than expected, run the game once, check the log for "Available Vulkan physical devices" and the index list it prints, and set this to the discrete one's index.
+- `mnk_mode`: enables keyboard/mouse controller emulation. `true` (the default) turns it on; set to `false` to require a real controller. See [Keybinds](#keybinds) for the default key mapping.
 
 Any setting can still be passed as a command-line flag instead (`--portal_mode software`), which overrides whatever the settings file has. One exception: `--game_data_root` (where `rom\` lives) can't be set from the settings file — it's read before the file loads — but it already defaults to `rom` next to the executable, so you only need the flag if your dump lives somewhere else.
 
 `--portal_test_figure` (command line only, for development) puts an all-zero test figure on the portal; the game reports it as a problem toy.
+
+## Keybinds
+
+These work regardless of input device:
+
+| Key | Action |
+| --- | --- |
+| **F3** | FPS / frame time overlay |
+| **F4** | Settings overlay — edit `giantsrecomp.toml` live |
+| **F6** | Virtual Portal of Power figure picker |
+| **F7** | Achievements overlay |
+
+### Keyboard/mouse controller emulation
+
+With `mnk_mode = true` (the default), the keyboard emulates a controller using these keys. Each is
+rebindable via its own `keybind_*` setting (e.g. `keybind_a = "Semicolon,Space"`) — a comma-separated
+list means either key works.
+
+| Controller | Default key(s) |
+| --- | --- |
+| A | `Semicolon` or `Space` |
+| B | `Quote` or `Backspace` |
+| X | `L` |
+| Y | `P` |
+| Left trigger | `Q` or `I` |
+| Right trigger | `E` or `O` |
+| Left shoulder | `1` |
+| Right shoulder | `3` |
+| Left stick | `W` `A` `S` `D` |
+| Left stick press | `F` |
+| Right stick | Arrow keys |
+| Right stick press | `K` |
+| D-pad | `Shift` + arrow keys |
+| Back | `Z` or `Tab` |
+| Start | `X` or `Return` |
+| Guide | unbound |
+
+The mouse doesn't drive the right stick by default — set `mnk_mouse = true` to use it instead of the
+right-stick keys, and `mnk_sensitivity` to adjust how fast it turns.
 
 ## AI usage
 

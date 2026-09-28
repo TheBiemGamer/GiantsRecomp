@@ -16,5 +16,8 @@ gpu_allow_invalid_fetch_constants = true  # works around a GPU quirk, on by defa
 ["UI"]
 # ui_scale = 1.5                          # ImGui overlay font/widget scale
 
+["Input"]
+mnk_mode = true                           # enable keyboard/mouse controller emulation
+
 ["Runtime"]
 # user_data_root = "C:\\path\\to\\folder" # empty = Documents\giantsrecomp
