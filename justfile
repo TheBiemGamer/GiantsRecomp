@@ -109,6 +109,22 @@ package-release: build-release
     echo "Copy that folder to the other machine, then add your own rom/ next to giantrecomp{{ exe_suffix }} there" && \
     echo "(rom/default.xex must exist) before running it."
 
+# Build the release binary, stage it alongside the installer's other inputs, and compile the
+# Windows installer with Inno Setup (ISCC.exe). Windows only -- see docs/releasing.md. Checks both
+# common Inno Setup 6 install locations (Program Files, from its official installer running
+# elevated, and the per-user AppData location winget can use instead).
+package-installer: build-release
+    rm -rf installer/staging && \
+    mkdir -p installer/staging && \
+    cp out/build/win-amd64-release/giantrecomp.exe installer/staging/ && \
+    cp out/build/win-amd64-release/giantrecomp_xexcheck.exe installer/staging/ && \
+    for lib in out/build/win-amd64-release/*.dll; do [ -e "$lib" ] && cp "$lib" installer/staging/; done && \
+    iscc="/c/Program Files (x86)/Inno Setup 6/ISCC.exe" && \
+    [ -e "$iscc" ] || iscc="$USERPROFILE/AppData/Local/Programs/Inno Setup 6/ISCC.exe" && \
+    [ -e "$iscc" ] || (echo "ISCC.exe not found -- install Inno Setup 6 (winget install JRSoftware.InnoSetup)" && exit 1) && \
+    "$iscc" installer/GiantRecomp.iss && \
+    echo "Installer built at installer/Output/GiantRecompSetup.exe"
+
 # --- Test ------------------------------------------------------------------
 
 test-debug: build-debug
