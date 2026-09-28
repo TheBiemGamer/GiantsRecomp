@@ -10,3 +10,5 @@
 /installer/staging/
 /installer/Output/
 /tools/__pycache__
+/docs/superpowers/
+/.superpowers/

@@ -2,7 +2,7 @@
 
 How to cut a release: build the binary, package the Windows installer, and publish it. No CI is
 involved — every step here runs on the maintainer's own machine, against their own legally-owned
-copy of the game (see `docs/superpowers/specs/2026-09-28-installer-design.md` for why).
+copy of the game. The installer never bundles game data; it extracts it from the user's own ISO/XEX.
 
 ## Build and package
 

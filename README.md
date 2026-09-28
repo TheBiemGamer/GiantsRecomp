@@ -4,7 +4,7 @@
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-informational)](#what-you-need)
 
 
-An unofficial PC port of the Xbox 360 version of Skylanders Giants, made by static recompilation with [ReXGlue](https://github.com/rexglue/rexglue-sdk). It support both the actual **portal of power** and a **virtual Portal of Power**, so you can play without the real toy hardware.
+An unofficial PC port of the Xbox 360 version of Skylanders Giants, made by static recompilation with [ReXGlue](https://github.com/rexglue/rexglue-sdk). It supports both the actual **portal of power** and a **virtual Portal of Power**, so you can play without the real toy hardware.
 
 This repository contains **no game data**. You need your own copy of the game.
 
@@ -55,7 +55,8 @@ out/build/linux-amd64-release/giantsrecompiled     # Linux
 
 Or, with `just`: `just play-release` (or `just play-debug`) — builds first if needed, then runs it.
 
-That's it if `rom\default.xex` exists — no flags needed for the common case. 
+That's it if `rom\default.xex` exists — no flags needed for the common case.
+
 ### Settings file
 
 Copy [`giantsrecomp.toml.example`](giantsrecomp.toml.example) next to `giantsrecompiled.exe` and rename it to `giantsrecomp.toml` to change any of the following without typing flags every time (the in-game **Settings** overlay, **F4**, reads and writes this same file):

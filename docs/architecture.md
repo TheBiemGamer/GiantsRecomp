@@ -3,7 +3,7 @@
 How Giants Recompiled is put together, and how the game talks to a Portal of Power. See also:
 `docs/portal-protocol.md` (wire format), `docs/figures.md` (figure format and the in-game picker),
 `docs/build.md` (codegen fixes and testing), `docs/reverse-engineering.md` (identifying
-functions and naming them, headless).
+functions and naming them).
 
 ## Repository layout
 
@@ -27,6 +27,9 @@ GiantsRecomp/
     portal-protocol.md       wire protocol
     figures.md               figure format, catalog, overlay
     build.md                 codegen fixes and testing
+    development.md           building from source
+    releasing.md             cutting a release and packaging the installer
+    reverse-engineering.md   identifying and naming functions with Ghidra
 ```
 
 ## Portal layering
