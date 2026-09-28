@@ -1,5 +1,7 @@
 # Build and test notes
 
+See also: `docs/development.md` (building from source), `docs/releasing.md` (cutting a release).
+
 Codegen fixes needed to recompile `default.xex`, and how the project is tested.
 
 ## Codegen fixes (`config/default.toml`)
