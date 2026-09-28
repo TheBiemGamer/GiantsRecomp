@@ -9,3 +9,4 @@
 /dist
 /installer/staging/
 /installer/Output/
+/tools/__pycache__
