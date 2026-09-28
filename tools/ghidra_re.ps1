@@ -48,6 +48,14 @@ function Get-JavaHome {
     return (Get-Item $found.FullName).Directory.Parent.FullName
 }
 
+function Get-GhidraInstallDir {
+    $found = Get-ChildItem -Path $GhidraDir -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $found) {
+        throw "Ghidra install not found under $GhidraDir -- run 'tools/ghidra_re.ps1 setup' first."
+    }
+    return $found.FullName
+}
+
 function Invoke-Setup {
     New-Item -ItemType Directory -Force -Path $ToolchainDir | Out-Null
 
@@ -115,6 +123,20 @@ function Invoke-Setup {
         Write-Host "XEXLoaderWV already present, skipping."
     }
 
+    # Ghidra 12's .py GhidraScript provider requires PyGhidra (native CPython via JPype) --
+    # there's no more Jython fallback for headless .py scripts. PyGhidra is also usable as a
+    # standalone library, which is what tools/ghidra_dump_function.py and
+    # tools/ghidra_rename_and_export.py use directly, bypassing analyzeHeadless -postScript
+    # entirely for those two operations. Installed from PyPI (not the offline wheel bundled
+    # under Ghidra's pypkg/dist, which is pinned to jpype 1.5.2 with no wheel for newer
+    # Python versions) so it resolves a jpype build compatible with whatever python3 is on
+    # this machine.
+    Write-Host "Installing PyGhidra..."
+    python3 -m pip install --quiet pyghidra
+    if ($LASTEXITCODE -ne 0) {
+        throw "pip install pyghidra failed with exit code $LASTEXITCODE"
+    }
+
     Write-Host "Setup complete."
 }
 
@@ -135,6 +157,13 @@ function Invoke-Import {
 switch ($Command) {
     "setup" { Invoke-Setup }
     "import" { Invoke-Import }
-    "dump" { throw "'dump' not implemented yet (Task 3)." }
+    "dump" {
+        if ($Rest.Count -ne 1) {
+            throw "Usage: tools/ghidra_re.ps1 dump <address>"
+        }
+        $env:JAVA_HOME = Get-JavaHome
+        $env:GHIDRA_INSTALL_DIR = Get-GhidraInstallDir
+        python3 (Join-Path $RepoRoot "tools\ghidra_dump_function.py") $ProjectDir $ProjectName $Rest[0]
+    }
     "rename" { throw "'rename' not implemented yet (Task 4)." }
 }
