@@ -63,8 +63,11 @@ class GiantsrecompApp : public rex::ReXApp {
   void OnPostSetup() override {
     giantsrecomp::InstallConfiguredPortal(user_data_root() / "figures");
     // The F3 debug overlay's FPS line only shows once something calls this; nothing did, so it
-    // silently stayed blank. Timed between successive calls (the overlay only calls this while
-    // visible, once per rendered frame) rather than hooking a game-specific present function.
+    // silently stayed blank. Sampled from the SDK's dedicated guest-swap counter (which only
+    // advances on an actual presented guest frame -- see CommandProcessor::guest_frame_count())
+    // rather than counting how often the overlay itself gets redrawn: the overlay is repainted at
+    // the host's presentation rate, which is a different clock than the guest's and would have
+    // reported host FPS mislabeled as "Guest".
     SetGuestFrameStats([this] { return ComputeFrameStats(); });
   }
 
@@ -168,35 +171,47 @@ class GiantsrecompApp : public rex::ReXApp {
   // instantaneous value changes every single call and is unreadable.
   static constexpr double kFpsRefreshIntervalSeconds = 0.5;
 
+  // Called once per host-rendered overlay frame (see OnPostSetup's comment above), which is a
+  // different, faster-or-slower clock than the guest's. So rather than counting these calls, each
+  // one just samples the SDK's presented-guest-frame counter and computes guest FPS from how much
+  // *that* advanced over the window -- the call frequency of this function doesn't matter.
   rex::ui::FrameStats ComputeFrameStats() {
     const auto now = std::chrono::steady_clock::now();
-    ++frame_stats_count_;
-    if (last_frame_stats_time_) {
-      fps_window_frames_++;
-      fps_window_elapsed_seconds_ +=
-          std::chrono::duration<double>(now - *last_frame_stats_time_).count();
-      if (fps_window_elapsed_seconds_ >= kFpsRefreshIntervalSeconds) {
-        cached_fps_ = fps_window_frames_ / fps_window_elapsed_seconds_;
-        cached_frame_time_ms_ = (fps_window_elapsed_seconds_ / fps_window_frames_) * 1000.0;
-        fps_window_frames_ = 0;
-        fps_window_elapsed_seconds_ = 0.0;
-      }
+    uint64_t guest_frame_count = 0;
+    if (auto* graphics_system = runtime() ? runtime()->graphics_system() : nullptr) {
+      guest_frame_count = graphics_system->guest_frame_count();
     }
-    last_frame_stats_time_ = now;
+
+    if (last_frame_stats_time_) {
+      double elapsed_seconds = std::chrono::duration<double>(now - *last_frame_stats_time_).count();
+      if (elapsed_seconds >= kFpsRefreshIntervalSeconds) {
+        uint64_t delta_frames = guest_frame_count - last_guest_frame_count_;
+        // Guard against a zero (or negative/wrapped) delta: with the overlay open but the guest
+        // stalled/paused/loading, no new frames were presented in this window, so leave the
+        // cached values as-is rather than dividing by a frame count of zero.
+        if (delta_frames > 0 && guest_frame_count > last_guest_frame_count_) {
+          cached_fps_ = double(delta_frames) / elapsed_seconds;
+          cached_frame_time_ms_ = (elapsed_seconds / double(delta_frames)) * 1000.0;
+        }
+        last_guest_frame_count_ = guest_frame_count;
+        last_frame_stats_time_ = now;
+      }
+    } else {
+      last_guest_frame_count_ = guest_frame_count;
+      last_frame_stats_time_ = now;
+    }
 
     rex::ui::FrameStats stats;
     stats.fps = cached_fps_;
     stats.frame_time_ms = cached_frame_time_ms_;
-    stats.frame_count = frame_stats_count_;
+    stats.frame_count = guest_frame_count;
     return stats;
   }
 
   std::filesystem::path game_data_root_;
   std::unique_ptr<giantsrecomp::PortalOverlayDialog> portal_overlay_;
   std::optional<std::chrono::steady_clock::time_point> last_frame_stats_time_;
-  uint64_t frame_stats_count_ = 0;
-  int fps_window_frames_ = 0;
-  double fps_window_elapsed_seconds_ = 0.0;
+  uint64_t last_guest_frame_count_ = 0;
   double cached_fps_ = 0.0;
   double cached_frame_time_ms_ = 0.0;
 };
