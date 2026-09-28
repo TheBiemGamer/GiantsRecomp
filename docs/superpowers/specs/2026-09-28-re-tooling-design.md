@@ -40,29 +40,63 @@ decompress + turns `.pdata` into real Ghidra functions): XEXLoaderWV
 (https://github.com/zeroKilo/XEXLoaderWV, also maintained at
 https://github.com/madebr/XEXLoaderWV). No custom loader needs to be written.
 
+## Headless / agentic operation (addendum)
+
+Requirement added after the initial design: the whole RE loop — install, import, read a
+function's decompiled code, name it, write the name back — must be runnable by an agent with no
+GUI interaction and no developer in the loop for routine use. This changes the shape of
+"Components" below from a GUI-driven script into a headless CLI toolchain:
+
+- Nothing here is interactive. `askFile`/GUI dialogs are out; every script takes its arguments
+  on the command line and is driven through Ghidra's `analyzeHeadless` (`analyzeHeadless.bat` on
+  Windows), which supports project creation, import, and running scripts non-interactively
+  (`-import`, `-process`, `-scriptPath`, `-postScript <script> <args...>`, all headless-safe).
+- Setup (JDK, Ghidra, XEXLoaderWV) is also scripted end-to-end rather than documented as manual
+  steps, since a dev doing it by hand once still breaks "no developer intervention" for anyone
+  re-running this later (a fresh machine, CI, another agent). Ghidra extensions load from
+  `<ghidra_install>/Extensions/Ghidra/<name>/` at startup with no separate "install" step beyond
+  putting the unzipped extension there — both in GUI and headless mode — so this needs no
+  Ghidra-side install command, just placing files correctly before the first `analyzeHeadless`
+  run.
+- All downloaded/generated tooling state (JDK, Ghidra, the Ghidra project/database for
+  `default.xex`) lives under the already-git-ignored `logs/` folder, same convention as the
+  project's existing local helper scripts — regenerable, never committed.
+
 ## Components
 
-- **Ghidra + XEXLoaderWV extension** — local install, not part of this repo. Opens
-  `rom/default.xex` directly with correct base addresses and function boundaries.
-- **`tools/ghidra_export_named_funcs.py`** (new) — a Ghidra script, modeled on ReXGlue's IDA
-  script, that:
-  - Reads `config/default.toml`, finds the `[functions]` section.
-  - For each named, non-default (not `FUN_*`/thunk/etc.) function in the current Ghidra
-    program, writes/updates a `0xADDRESS = { name = "...", size = 0x... }` entry.
-  - Preserves entries that already exist for other reasons (the current codegen-correctness
-    `parent`/`size` fixes) — merge, not replace.
-  - Matches the existing TOML entry formatting so diffs stay small and reviewable.
-- **`docs/reverse-engineering.md`** (new) — install steps (Ghidra, XEXLoaderWV), loading the
-  xex, naming convention, running the export script, then rebuilding codegen to pick up new
-  names.
+- **`tools/ghidra_re.ps1`** (new) — PowerShell wrapper, the single entry point for the whole
+  workflow. Subcommands:
+  - `setup` — downloads a JDK, Ghidra, and the XEXLoaderWV extension (latest GitHub releases,
+    resolved at run time rather than pinned to a hardcoded version/URL) into `logs/toolchain/`.
+  - `import` — one-time `analyzeHeadless -import rom/default.xex` into a project under
+    `logs/ghidra_project/`, with full auto-analysis.
+  - `dump <address>` — runs `tools/ghidra_dump_function.py` headless against the imported
+    project; prints decompiled C, callers/callees, and referenced strings for one function, for
+    an agent to read and reason about.
+  - `rename <address> <name> [<address> <name> ...]` — runs
+    `tools/ghidra_rename_and_export.py` headless: renames each function in the Ghidra database
+    and syncs the result into `config/default.toml` in the same invocation.
+- **`tools/ghidra_dump_function.py`** (new) — headless Ghidra post-script (no GUI API calls).
+  Read-only.
+- **`tools/ghidra_rename_and_export.py`** (new) — headless Ghidra post-script. Renames functions
+  in the open program, then calls `tools/rexglue_toml_sync.py`'s `sync_functions` to update
+  `config/default.toml`. Combines what would otherwise be a manual "rename in the GUI" step and
+  a separate export step into one non-interactive call.
+- **`tools/rexglue_toml_sync.py`** (new, unchanged by this addendum) — pure TOML-merge logic,
+  no Ghidra dependency, unit tested. Reused by `ghidra_rename_and_export.py`.
+- **`docs/reverse-engineering.md`** (new) — the headless CLI workflow: run `setup` once, `import`
+  once per xex version, then `dump`/`rename` in a loop per function.
 
 ## Data flow
 
 ```
 rom/default.xex (user's dump, git-ignored)
-   -> Ghidra (via XEXLoaderWV), local, not committed
-   -> analyst renames functions as they're understood
-   -> tools/ghidra_export_named_funcs.py
+   -> tools/ghidra_re.ps1 setup   (JDK + Ghidra + XEXLoaderWV -> logs/toolchain/, one time)
+   -> tools/ghidra_re.ps1 import  (-> logs/ghidra_project/, one time per xex version)
+   -> tools/ghidra_re.ps1 dump <addr>      (agent reads decompiled C, decides a name)
+   -> tools/ghidra_re.ps1 rename <addr> <name> [...]
+        -> tools/ghidra_rename_and_export.py (headless): renames in the Ghidra DB,
+           then calls tools/rexglue_toml_sync.py
    -> config/default.toml [functions]  (tracked in git — this is the deliverable)
    -> ReXGlue codegen (re-run)
    -> generated/ C++ (git-ignored, regenerated) shows real names instead of sub_ADDRESS
@@ -73,11 +107,14 @@ rom/default.xex (user's dump, git-ignored)
 Same line the project already draws for `generated/` and `rom/`:
 
 - **Committed:** `config/default.toml` changes (address -> name/size metadata only — same
-  category as the existing codegen-fix entries). `tools/ghidra_export_named_funcs.py`.
-  `docs/reverse-engineering.md`.
-- **Not committed (git-ignored):** Ghidra project files (`.gpr`/`.rep`) — regenerable from the
-  xex, purely local. `rom/default.xex` itself — already ignored. `generated/` — already ignored
-  except `generated/rexglue.cmake`.
+  category as the existing codegen-fix entries). `tools/ghidra_re.ps1`,
+  `tools/ghidra_dump_function.py`, `tools/ghidra_rename_and_export.py`,
+  `tools/rexglue_toml_sync.py` (+ its test). `docs/reverse-engineering.md`.
+- **Not committed (git-ignored, all under the already-ignored `logs/`):** the downloaded JDK and
+  Ghidra install (`logs/toolchain/`), the Ghidra project/database for `default.xex`
+  (`logs/ghidra_project/`, `.gpr`/`.rep`) — both regenerable by re-running `setup`/`import`.
+  `rom/default.xex` itself — already ignored. `generated/` — already ignored except
+  `generated/rexglue.cmake`.
 
 No disassembled/decompiled game code or binaries are ever committed — only the small metadata
 (address, name, size) needed to drive ReXGlue's own codegen, which is the same thing the
@@ -85,15 +122,19 @@ existing `[functions]` entries already are.
 
 ## Testing / verification
 
-This is dev tooling, not runtime code — no unit tests apply. Verification is a round-trip check:
+`tools/rexglue_toml_sync.py` is pure logic and unit tested (stdlib `unittest`). The three
+Ghidra-side pieces (`setup`/`import`/`dump`/`rename`) need a real Ghidra instance and are
+verified by an end-to-end round-trip instead:
 
-1. In Ghidra, rename one function whose behavior is already fully understood from
-   `docs/architecture.md` — `sub_82403BB8` (the game's portal-read wrapper hooked in
-   `src/hooks/portal_hook.cpp`) is a good candidate: known, small, already documented.
-2. Run `tools/ghidra_export_named_funcs.py`, confirm it writes the expected `name` entry into
-   `config/default.toml` and leaves all other entries untouched.
-3. Re-run codegen, confirm the generated header uses the new name and the project still builds
-   (`just build-debug` or equivalent).
+1. `tools/ghidra_re.ps1 setup`, then `tools/ghidra_re.ps1 import` — confirm both complete and
+   `logs/ghidra_project/` contains an analyzed program.
+2. `tools/ghidra_re.ps1 dump 0x82403BB8` — the game's portal-read wrapper, hooked in
+   `src/hooks/portal_hook.cpp` and already fully understood per `docs/architecture.md`. Confirm
+   it prints plausible decompiled C for that function.
+3. `tools/ghidra_re.ps1 rename 0x82403BB8 XamInputNonControllerGetRaw_wrapper` — confirm it
+   updates `config/default.toml` with the expected `name` entry and leaves all other entries
+   untouched, and that running it again with the same input is a no-op (idempotent).
+4. Re-run codegen, confirm the generated header uses the new name and the project still builds.
 
 ## Out of scope
 
