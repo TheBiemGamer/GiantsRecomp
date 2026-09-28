@@ -7,13 +7,14 @@ exporting names into config/default.toml. No GUI involved anywhere.
 .USAGE
     tools/ghidra_re.ps1 setup
     tools/ghidra_re.ps1 import
+    tools/ghidra_re.ps1 search <term> [<term> ...]
     tools/ghidra_re.ps1 dump <address>
     tools/ghidra_re.ps1 rename <address> <name> [<address> <name> ...]
 #>
 
 param(
     [Parameter(Mandatory = $true, Position = 0)]
-    [ValidateSet("setup", "import", "dump", "rename")]
+    [ValidateSet("setup", "import", "search", "dump", "rename")]
     [string]$Command,
 
     [Parameter(Position = 1, ValueFromRemainingArguments = $true)]
@@ -157,6 +158,17 @@ function Invoke-Import {
 switch ($Command) {
     "setup" { Invoke-Setup }
     "import" { Invoke-Import }
+    "search" {
+        if ($Rest.Count -lt 1) {
+            throw "Usage: tools/ghidra_re.ps1 search <term> [<term> ...]"
+        }
+        $env:JAVA_HOME = Get-JavaHome
+        $env:GHIDRA_INSTALL_DIR = Get-GhidraInstallDir
+        python3 (Join-Path $RepoRoot "tools\ghidra_search_strings.py") $ProjectDir $ProjectName @Rest
+        if ($LASTEXITCODE -ne 0) {
+            throw "ghidra_search_strings.py failed with exit code $LASTEXITCODE"
+        }
+    }
     "dump" {
         if ($Rest.Count -ne 1) {
             throw "Usage: tools/ghidra_re.ps1 dump <address>"

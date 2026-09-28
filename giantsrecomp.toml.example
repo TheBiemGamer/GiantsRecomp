@@ -11,10 +11,16 @@ resolution = "1920x1080"                  # startup window size
 resolution_scale = 2                      # 1-8 supersample multiplier, 1 = off
 frame_rate_limit = 0                      # 0 = unlimited
 gpu_allow_invalid_fetch_constants = true  # works around a GPU quirk, on by default
+ultrawide_fov = true                      # widen camera FOV to match resolution's aspect ratio
 # vulkan_device = -1                      # GPU index for multi-GPU systems, -1 = auto-pick
 
 ["UI"]
 # ui_scale = 1.5                          # ImGui overlay font/widget scale
+
+["UI/Presenter"]
+present_use_actual_aspect = true          # present the real rendered frame at 'resolution's real
+                                           # aspect instead of the reported video mode's -- matters
+                                           # together with ultrawide_fov above
 
 ["Input"]
 mnk_mode = true                           # enable keyboard/mouse controller emulation
