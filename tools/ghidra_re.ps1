@@ -165,5 +165,14 @@ switch ($Command) {
         $env:GHIDRA_INSTALL_DIR = Get-GhidraInstallDir
         python3 (Join-Path $RepoRoot "tools\ghidra_dump_function.py") $ProjectDir $ProjectName $Rest[0]
     }
-    "rename" { throw "'rename' not implemented yet (Task 4)." }
+    "rename" {
+        if ($Rest.Count -lt 2 -or $Rest.Count % 2 -ne 0) {
+            throw "Usage: tools/ghidra_re.ps1 rename <address> <name> [<address> <name> ...]"
+        }
+        $env:JAVA_HOME = Get-JavaHome
+        $env:GHIDRA_INSTALL_DIR = Get-GhidraInstallDir
+        $tomlPath = Join-Path $RepoRoot "config\default.toml"
+        $scriptArgs = @($ProjectDir, $ProjectName, $tomlPath) + $Rest
+        python3 (Join-Path $RepoRoot "tools\ghidra_rename_and_export.py") @scriptArgs
+    }
 }
