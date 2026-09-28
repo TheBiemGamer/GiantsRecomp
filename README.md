@@ -158,6 +158,7 @@ This project stands on other people's work.
 - Everyone who documented the Portal of Power and its figures and made dumping tools that let people keep their own figures.
 - **[Skylanders Ultimate NFC Pack V15](https://skylandersnfc.github.io/Skylanders-Ultimate-NFC-Pack/)** is the source of the figure dumps used to build the game's built-in Skylander name/id catalog, used for the in-game figure creator and picker.
 - Figure save-data decoding (level, gold, nickname) is built on public reverse-engineering of the Skylanders NFC format: **[SkyReader](https://github.com/reedstrm/SkyReader)** and Marijn Kneppers' **["Reverse engineering Skylanders' Toys-to-life mechanics"](https://marijnkneppers.dev/posts/reverse-engineering-skylanders-toys-to-life-mechanics/)**. 
+- **[extract-xiso](https://github.com/XboxDev/extract-xiso)** is vendored (prebuilt, unmodified) in `installer/` to unpack an Xbox 360 ISO during installation. It keeps its own license (`installer/extract-xiso.LICENSE.txt`).
 
 ## License and legal
 

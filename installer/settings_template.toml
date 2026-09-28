@@ -1,0 +1,20 @@
+# Copy next to giantrecomp.exe, rename to "giantsrecomp.toml". Full docs in README.md.
+# The in-game Settings overlay (F4) reads and writes this same file.
+
+["Portal"]
+portal_mode = "__PORTAL_MODE__"           # "software", "usb" (real portal), or "none"
+portal_figures_dir = ""                   # empty = "figures" next to your saves
+# portal_figure = "C:\\path\\to\\Skylander.dump"  # loads this dump onto the portal at startup
+
+["Graphics"]
+resolution = "__RESOLUTION__"             # startup window size
+resolution_scale = __RESOLUTION_SCALE__   # 1-8 supersample multiplier, 1 = off
+frame_rate_limit = 0                      # 0 = unlimited
+gpu_allow_invalid_fetch_constants = true  # works around a GPU quirk, on by default
+# vulkan_device = -1                      # GPU index for multi-GPU systems, -1 = auto-pick
+
+["UI"]
+# ui_scale = 1.5                          # ImGui overlay font/widget scale
+
+["Runtime"]
+# user_data_root = "C:\\path\\to\\folder" # empty = Documents\giantsrecomp
