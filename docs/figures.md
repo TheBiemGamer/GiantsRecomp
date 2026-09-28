@@ -28,7 +28,7 @@ The figure file format, the built-in catalog, and the in-game picker. See
 ## Overlay
 
 `src/overlay/portal_overlay_dialog.cpp` is a `rex::ui::ImGuiDialog`, opened with **F6**
-(`src/giantrecomp_app.h`, registered in `OnCreateDialogs`). It has a Browse tab (filterable list
+(`src/giantsrecomp_app.h`, registered in `OnCreateDialogs`). It has a Browse tab (filterable list
 from `ScanFigureCatalog`, Place/Remove into a chosen slot 0-15) and a New Figure tab (pick a
 Skylander from `AllSkylanders()`, create and place it via `CreateAndPlaceFigure`). It only calls
 the control API in `src/hooks/portal_hook.h` and `src/portal/figure_catalog.h` — it never touches

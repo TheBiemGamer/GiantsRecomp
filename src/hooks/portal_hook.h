@@ -9,10 +9,10 @@
 #include "portal/figure_catalog.h"  // for portal::SkylanderInfo
 #include "portal/usb/usb_portal.h"  // for portal::FigureData
 
-namespace giantrecomp::portal {
+namespace giantsrecomp::portal {
 class SoftwarePortal;
 class UsbPortal;
-}  // namespace giantrecomp::portal
+}  // namespace giantsrecomp::portal
 
 // So other translation units (the overlay) can read the folder the figure picker searches.
 REXCVAR_DECLARE(std::string, portal_figures_dir);
@@ -21,7 +21,7 @@ REXCVAR_DECLARE(std::string, portal_figures_dir);
 // isn't usb at all" -- both show GetUsbPortal() == nullptr, and those need different messages.
 REXCVAR_DECLARE(std::string, portal_mode);
 
-namespace giantrecomp {
+namespace giantsrecomp {
 
 // Creates the portal selected by the `portal_mode` cvar and routes the game's portal reads and
 // writes to it. With no portal (mode `none` or an unknown value) the game keeps its own path and
@@ -72,4 +72,4 @@ std::optional<portal::FigureData> ReadRealFigureBlocks(int slot);
 bool DumpRealFigureToFile(int slot, std::filesystem::path* saved_path = nullptr,
                           std::string* error = nullptr);
 
-}  // namespace giantrecomp
+}  // namespace giantsrecomp

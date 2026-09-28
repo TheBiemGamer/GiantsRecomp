@@ -1,9 +1,9 @@
-# giantrecomp - ReXGlue Recompiled Project
+# giantsrecomp - ReXGlue Recompiled Project
 #
 # SDK boilerplate lives in generated/rexglue.cmake.
 
 cmake_minimum_required(VERSION 3.25)
-project(giantrecomp LANGUAGES CXX C)
+project(giantsrecomp LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -38,14 +38,14 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/generated/default/sources.cmake")
     message(WARNING
         "No recompiled code yet (generated/default/sources.cmake is missing).\n"
         "  1. Put your extracted game disc in rom/ (rom/default.xex must exist).\n"
-        "  2. Run:  cmake --build --preset <preset> --target giantrecomp_codegen\n"
+        "  2. Run:  cmake --build --preset <preset> --target giantsrecomp_codegen\n"
         "  3. Re-run:  cmake --preset <preset>\n"
         "  4. Build:  cmake --build --preset <preset>\n"
         "See README.md.")
 endif()
 
 # Sources
-set(GIANTRECOMP_SOURCES
+set(GIANTSRECOMP_SOURCES
     src/main.cpp
     src/game/kernel_stubs.cpp
     src/hooks/portal_hook.cpp
@@ -55,16 +55,16 @@ set(GIANTRECOMP_SOURCES
 )
 
 if(WIN32)
-    add_executable(giantrecomp WIN32 ${GIANTRECOMP_SOURCES})
+    add_executable(giantsrecompiled WIN32 ${GIANTSRECOMP_SOURCES})
 else()
-    add_executable(giantrecomp ${GIANTRECOMP_SOURCES})
+    add_executable(giantsrecompiled ${GIANTSRECOMP_SOURCES})
 endif()
 
-rexglue_setup_target(giantrecomp GPU_PLUGINS xenos)
+rexglue_setup_target(giantsrecompiled GPU_PLUGINS xenos)
 
 if(REXSDK_DIR)
     # An installed SDK ships imgui's headers next to its own; an in-tree build must point at them.
-    target_include_directories(giantrecomp PRIVATE "${REXSDK_DIR}/thirdparty/imgui")
+    target_include_directories(giantsrecompiled PRIVATE "${REXSDK_DIR}/thirdparty/imgui")
 endif()
 
 # Seed a fresh build dir with the settings-file template. Never overwrites an existing one: the
@@ -74,40 +74,40 @@ if(NOT EXISTS "${CMAKE_BINARY_DIR}/giantsrecomp.toml")
 endif()
 
 # --- Pinned game executable -------------------------------------------------
-set(GIANTRECOMP_XEX_HASH_FILE "${CMAKE_CURRENT_SOURCE_DIR}/docs/game/default.xex.sha256")
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${GIANTRECOMP_XEX_HASH_FILE}")
-file(READ "${GIANTRECOMP_XEX_HASH_FILE}" GIANTRECOMP_XEX_HASH_TEXT)
-string(REGEX MATCH "^[0-9a-fA-F]+" GIANTRECOMP_XEX_SHA256 "${GIANTRECOMP_XEX_HASH_TEXT}")
-string(LENGTH "${GIANTRECOMP_XEX_SHA256}" GIANTRECOMP_XEX_SHA256_LEN)
-if(NOT GIANTRECOMP_XEX_SHA256_LEN EQUAL 64)
-    message(FATAL_ERROR "docs/game/default.xex.sha256 must start with a 64-character hex SHA-256 (found ${GIANTRECOMP_XEX_SHA256_LEN} hex characters)")
+set(GIANTSRECOMP_XEX_HASH_FILE "${CMAKE_CURRENT_SOURCE_DIR}/docs/game/default.xex.sha256")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${GIANTSRECOMP_XEX_HASH_FILE}")
+file(READ "${GIANTSRECOMP_XEX_HASH_FILE}" GIANTSRECOMP_XEX_HASH_TEXT)
+string(REGEX MATCH "^[0-9a-fA-F]+" GIANTSRECOMP_XEX_SHA256 "${GIANTSRECOMP_XEX_HASH_TEXT}")
+string(LENGTH "${GIANTSRECOMP_XEX_SHA256}" GIANTSRECOMP_XEX_SHA256_LEN)
+if(NOT GIANTSRECOMP_XEX_SHA256_LEN EQUAL 64)
+    message(FATAL_ERROR "docs/game/default.xex.sha256 must start with a 64-character hex SHA-256 (found ${GIANTSRECOMP_XEX_SHA256_LEN} hex characters)")
 endif()
 
-add_library(giantrecomp_verify STATIC src/xex_verify.cpp)
-target_include_directories(giantrecomp_verify PUBLIC src)
+add_library(giantsrecomp_verify STATIC src/xex_verify.cpp)
+target_include_directories(giantsrecomp_verify PUBLIC src)
 # Uses the SDK's vendored, portable SHA-256 (thirdparty/crypto) instead of a platform crypto API
 # (BCrypt on Windows has no Linux/macOS equivalent), so this one implementation covers every preset.
 if(NOT REXSDK_DIR)
-    message(FATAL_ERROR "REXSDK_DIR must be set (giantrecomp_verify needs its vendored SHA-256 implementation)")
+    message(FATAL_ERROR "REXSDK_DIR must be set (giantsrecomp_verify needs its vendored SHA-256 implementation)")
 endif()
-target_include_directories(giantrecomp_verify PRIVATE "${REXSDK_DIR}/thirdparty")
-target_sources(giantrecomp_verify PRIVATE "${REXSDK_DIR}/thirdparty/crypto/sha256.cpp")
+target_include_directories(giantsrecomp_verify PRIVATE "${REXSDK_DIR}/thirdparty")
+target_sources(giantsrecomp_verify PRIVATE "${REXSDK_DIR}/thirdparty/crypto/sha256.cpp")
 
-target_link_libraries(giantrecomp PRIVATE giantrecomp_verify giantrecomp_portal hidapi::hidapi)
-target_compile_definitions(giantrecomp PRIVATE GIANTRECOMP_XEX_SHA256="${GIANTRECOMP_XEX_SHA256}")
+target_link_libraries(giantsrecompiled PRIVATE giantsrecomp_verify giantsrecomp_portal hidapi::hidapi)
+target_compile_definitions(giantsrecompiled PRIVATE GIANTSRECOMP_XEX_SHA256="${GIANTSRECOMP_XEX_SHA256}")
 
 enable_testing()
-add_executable(giantrecomp_tests tests/xex_verify_test.cpp)
-target_link_libraries(giantrecomp_tests PRIVATE giantrecomp_verify)
-add_test(NAME xex_verify COMMAND giantrecomp_tests)
+add_executable(giantsrecomp_tests tests/xex_verify_test.cpp)
+target_link_libraries(giantsrecomp_tests PRIVATE giantsrecomp_verify)
+add_test(NAME xex_verify COMMAND giantsrecomp_tests)
 
-add_executable(giantrecomp_xexcheck src/tools/xex_check_cli.cpp)
-target_link_libraries(giantrecomp_xexcheck PRIVATE giantrecomp_verify)
-target_compile_definitions(giantrecomp_xexcheck PRIVATE GIANTRECOMP_XEX_SHA256="${GIANTRECOMP_XEX_SHA256}")
+add_executable(giantsrecomp_xexcheck src/tools/xex_check_cli.cpp)
+target_link_libraries(giantsrecomp_xexcheck PRIVATE giantsrecomp_verify)
+target_compile_definitions(giantsrecomp_xexcheck PRIVATE GIANTSRECOMP_XEX_SHA256="${GIANTSRECOMP_XEX_SHA256}")
 
-# Process-boundary test: runs the actual built giantrecomp_xexcheck.exe against a non-ASCII path to
+# Process-boundary test: runs the actual built giantsrecomp_xexcheck.exe against a non-ASCII path to
 # catch argv narrowing (a plain main(argc, char**) loses characters outside the system code page on
-# Windows). Depends on giantrecomp_xexcheck existing in the same output directory at test time.
+# Windows). Depends on giantsrecomp_xexcheck existing in the same output directory at test time.
 add_executable(xex_check_cli_argv_test tests/xex_check_cli_argv_test.cpp)
 add_test(NAME xex_check_cli_argv COMMAND xex_check_cli_argv_test)
 
@@ -116,7 +116,7 @@ target_include_directories(xex_check_exit_code_test PRIVATE src)
 add_test(NAME xex_check_exit_code COMMAND xex_check_exit_code_test)
 
 # --- Portal core (no ReXGlue dependency) ------------------------------------
-add_library(giantrecomp_portal STATIC
+add_library(giantsrecomp_portal STATIC
     src/portal/figure_catalog.cpp
     src/portal/figure_file.cpp
     src/portal/figure_stats.cpp
@@ -124,19 +124,19 @@ add_library(giantrecomp_portal STATIC
     src/portal/xbox_frame.cpp
     src/portal/software/software_portal.cpp
 )
-target_include_directories(giantrecomp_portal PUBLIC src)
-target_compile_features(giantrecomp_portal PUBLIC cxx_std_23)
+target_include_directories(giantsrecomp_portal PUBLIC src)
+target_compile_features(giantsrecomp_portal PUBLIC cxx_std_23)
 # figure_stats.cpp decrypts figure save data (AES-128 + MD5, see its own comments) using the
-# SDK's already-vendored, standalone implementations -- same reasoning as giantrecomp_verify's
+# SDK's already-vendored, standalone implementations -- same reasoning as giantsrecomp_verify's
 # vendored SHA-256 above: no ReXGlue dependency needed for either.
 if(NOT REXSDK_DIR)
-    message(FATAL_ERROR "REXSDK_DIR must be set (giantrecomp_portal needs its vendored AES-128/MD5 implementations)")
+    message(FATAL_ERROR "REXSDK_DIR must be set (giantsrecomp_portal needs its vendored AES-128/MD5 implementations)")
 endif()
-target_include_directories(giantrecomp_portal PRIVATE
+target_include_directories(giantsrecomp_portal PRIVATE
     "${REXSDK_DIR}/thirdparty/aes_128"
     "${REXSDK_DIR}/thirdparty/libmspack/cabextract"
 )
-target_sources(giantrecomp_portal PRIVATE
+target_sources(giantsrecomp_portal PRIVATE
     "${REXSDK_DIR}/thirdparty/aes_128/aes.c"
     "${REXSDK_DIR}/thirdparty/libmspack/cabextract/md5.c"
 )
@@ -144,6 +144,6 @@ target_sources(giantrecomp_portal PRIVATE
 foreach(portal_test portal_framing_test portal_mode_test software_portal_test figure_file_test figure_catalog_test figure_stats_test)
     add_executable(${portal_test} tests/${portal_test}.cpp)
     target_include_directories(${portal_test} PRIVATE tests)
-    target_link_libraries(${portal_test} PRIVATE giantrecomp_portal)
+    target_link_libraries(${portal_test} PRIVATE giantsrecomp_portal)
     add_test(NAME ${portal_test} COMMAND ${portal_test})
 endforeach()

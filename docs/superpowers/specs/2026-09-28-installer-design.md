@@ -2,9 +2,9 @@
 
 ## Goal
 
-A Windows installer that gets a user from "I have the game disc/ISO" to "GiantRecomp is in my
+A Windows installer that gets a user from "I have the game disc/ISO" to "GiantsRecomp is in my
 Start Menu and configured" without them touching CMake, Visual Studio, or a terminal. Output is a
-single `GiantRecompSetup.exe` a user downloads and runs.
+single `GiantsRecompSetup.exe` a user downloads and runs.
 
 ## Policy change this depends on
 
@@ -12,7 +12,7 @@ Every sibling recomp project (Zelda64Recomp, UnleashedRecomp, the N64:Recomp fam
 prebuilt binary: the maintainer recompiles one fixed, version-pinned game build once, and that's
 what the installer contains. Users only ever supply the game's *asset* files, never a compiler.
 
-GiantRecomp already pins to one exact version (Skylanders Giants 1.0 USA/EU, checked by SHA-256 in
+GiantsRecomp already pins to one exact version (Skylanders Giants 1.0 USA/EU, checked by SHA-256 in
 `src/xex_verify.cpp`), so recompilation of that version is deterministic — a maintainer-built
 binary is exactly what any 1.0 owner would get building it themselves. This design adopts that
 model. It is a real policy change: the current README's "no game code and no game data" claim
@@ -29,14 +29,14 @@ into the installer compiler by hand. No GitHub Actions pipeline needing access t
 - **Windows only.** The Start Menu requirement is Windows-specific; Linux packaging (AppImage/deb)
   would be a separate future design with no equivalent ask.
 - **Bundled binary, not downloaded.** The installer `.exe` contains the prebuilt
-  `giantrecomp.exe` + runtime DLLs already; installing needs no network access.
+  `giantsrecomp.exe` + runtime DLLs already; installing needs no network access.
 - **ISO or pre-extracted folder**, both handled by the same installer.
 
 ## Components (new)
 
 New top-level `installer/` directory:
 
-- `GiantRecomp.iss` — the Inno Setup script: wizard pages, file staging, Start Menu/uninstall
+- `GiantsRecomp.iss` — the Inno Setup script: wizard pages, file staging, Start Menu/uninstall
   registration.
 - `extract-xiso.exe` — vendored prebuilt binary of the existing open-source XISO extractor
   (already named in the README's credits) for unpacking ISO input. Not built from source as part
@@ -56,7 +56,7 @@ reimplementing Start Menu/uninstall registration that Inno already provides.
 
 ## Install location
 
-`{localappdata}\Programs\GiantRecomp` by default — **not** Program Files. `giantsrecomp.toml`
+`{localappdata}\Programs\GiantsRecomp` by default — **not** Program Files. `giantsrecomp.toml`
 lives next to the executable and the in-game F4 overlay writes to it live during play; a
 Program-Files install would hit UAC virtualization on those writes (silently redirecting them
 somewhere else, breaking later reads). A per-user location needs no admin elevation and the F4
@@ -87,16 +87,16 @@ untouched by the installer regardless of install location.
    `giantsrecomp.toml` live, so duplicating the whole file into the wizard would just be a second,
    more cumbersome copy of that overlay.
 8. **Ready/summary.**
-9. **Install** — copies `giantrecomp.exe` + runtime DLLs, writes `giantsrecomp.toml` from
+9. **Install** — copies `giantsrecomp.exe` + runtime DLLs, writes `giantsrecomp.toml` from
    `giantsrecomp.toml.example` with the wizard's answers substituted in, creates a Start Menu group
-   ("GiantRecomp" launch shortcut + "Uninstall GiantRecomp").
+   ("GiantsRecomp" launch shortcut + "Uninstall GiantsRecomp").
 10. **Finish** — optional "launch now" checkbox.
 
 ## On-disk layout
 
 ```
 <install>/
-  giantrecomp.exe
+  giantsrecomp.exe
   *.dll                  (runtime shared libs, as today's package-release copies)
   giantsrecomp.toml      (generated from the template + wizard answers)
   rom/                   (extracted or copied game files, default.xex etc.)
@@ -114,7 +114,7 @@ install is detected. If `<install>\rom\default.xex` already passes the fingerpri
 
 - Skip wizard pages 4-6 (ROM source, fingerprint check, extraction) entirely.
 - Skip page 7 (settings) — leave the existing `giantsrecomp.toml` untouched.
-- Only replace `giantrecomp.exe` and the runtime DLLs.
+- Only replace `giantsrecomp.exe` and the runtime DLLs.
 
 This preserves the ROM, all user settings (including anything changed later via F4), and saves
 (which were never in the install directory to begin with).
@@ -151,7 +151,7 @@ hardware is exercised by hand, not automated. Manual checklist before each relea
   saves, and only replaces the binary.
 - Uninstall leaves `rom/` and the toml in place unless the opt-in checkbox is used; Documents
   saves are untouched regardless.
-- Start Menu shortcut launches the game; an "Uninstall GiantRecomp" entry appears in both the
+- Start Menu shortcut launches the game; an "Uninstall GiantsRecomp" entry appears in both the
   Start Menu and Windows' Add/Remove Programs.
 - Wizard's `portal_mode`/`resolution`/`resolution_scale` choices land correctly in the generated
   `giantsrecomp.toml`.
@@ -169,7 +169,7 @@ Splitting `README.md` by audience, matching the existing `docs/` pattern
   separate from `docs/build.md`, which stays scoped to codegen fixes and the unit test suite —
   different audience (a contributor fixing a codegen bug vs. someone building from source to play).
 - **`docs/releasing.md`** (new) — `just build-release`/`package-release`, compiling
-  `installer/GiantRecomp.iss`, uploading to GitHub Releases by hand, and the pre-publish checklist
+  `installer/GiantsRecomp.iss`, uploading to GitHub Releases by hand, and the pre-publish checklist
   from the Validation section above.
 - README's "This repository contains no game code and no game data" line becomes "no game data" —
   the installer now ships the recompiled game logic binary; only the game's own assets are excluded

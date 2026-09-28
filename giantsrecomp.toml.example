@@ -1,4 +1,4 @@
-# Copy next to giantrecomp.exe, rename to "giantsrecomp.toml". Full docs in README.md.
+# Copy next to giantsrecompiled.exe, rename to "giantsrecomp.toml". Full docs in README.md.
 # The in-game Settings overlay (F4) reads and writes this same file.
 
 ["Portal"]

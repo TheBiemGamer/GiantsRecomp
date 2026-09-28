@@ -1,6 +1,6 @@
-#define MyAppName "GiantRecomp"
+#define MyAppName "Giants Recompiled"
 #define MyAppVersion "0.1.0"
-#define MyAppExeName "giantrecomp.exe"
+#define MyAppExeName "giantsrecompiled.exe"
 
 [Setup]
 AppId={{817B5C32-5040-493F-8D21-566420901C26}
@@ -13,20 +13,20 @@ PrivilegesRequired=lowest
 ArchitecturesInstallIn64BitMode=x64compatible
 InfoBeforeFile=disclaimer.txt
 OutputDir=Output
-OutputBaseFilename=GiantRecompSetup
+OutputBaseFilename=GiantsRecompSetup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 
 [Files]
-Source: "staging\giantrecomp.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "staging\giantsrecompiled.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "staging\*.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "staging\giantrecomp_xexcheck.exe"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "staging\giantsrecomp_xexcheck.exe"; DestDir: "{tmp}"; Flags: dontcopy
 Source: "settings_template.toml"; DestDir: "{tmp}"; Flags: dontcopy
 Source: "extract-xiso.exe"; DestDir: "{tmp}"; Flags: dontcopy
 ; Vendored Visual C++ runtime DLLs (from the maintainer's own VS install, redistributable per
-; Microsoft's VC++ Redistributable license): giantrecomp.exe and its own DLLs need these permanently
-; installed in {app}, and giantrecomp_xexcheck.exe -- run from {tmp} before {app} even exists, for
+; Microsoft's VC++ Redistributable license): giantsrecompiled.exe and its own DLLs need these permanently
+; installed in {app}, and giantsrecomp_xexcheck.exe -- run from {tmp} before {app} even exists, for
 ; the ROM version check -- needs its own copies alongside it there, since Windows' DLL search order
 ; checks the running executable's own directory first.
 Source: "redist\msvcp140.dll"; DestDir: "{app}"; Flags: ignoreversion
@@ -72,12 +72,12 @@ begin
   end;
 end;
 
-// giantrecomp_xexcheck.exe runs from {tmp} before {app} exists, so it needs its own copies of the
+// giantsrecomp_xexcheck.exe runs from {tmp} before {app} exists, so it needs its own copies of the
 // two VC++ runtime DLLs it imports sitting next to it there -- Windows checks the running
 // executable's own directory first when resolving DLL imports.
 procedure ExtractXexCheckWithRuntime;
 begin
-  ExtractTemporaryFile('giantrecomp_xexcheck.exe');
+  ExtractTemporaryFile('giantsrecomp_xexcheck.exe');
   ExtractTemporaryFile('msvcp140.dll');
   ExtractTemporaryFile('vcruntime140.dll');
 end;
@@ -199,14 +199,14 @@ begin
     Exit;
   end;
 
-  XexCheckExe := ExpandConstant('{tmp}') + '\giantrecomp_xexcheck.exe';
+  XexCheckExe := ExpandConstant('{tmp}') + '\giantsrecomp_xexcheck.exe';
   ExtractXexCheckWithRuntime;
   if not Exec(XexCheckExe, '"' + CandidateXex + '"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then begin
     ErrorMsg := 'Could not run the version-check tool.';
     if IsIso then DelTree(ExpandConstant('{app}') + '\rom', True, True, True);
     Exit;
   end;
-  // Exit codes match giantrecomp_xexcheck's own giantrecomp::XexCheckExitCode (src/tools/xex_check_exit_code.h):
+  // Exit codes match giantsrecomp_xexcheck's own giantsrecomp::XexCheckExitCode (src/tools/xex_check_exit_code.h):
   // 0 = match, 2 = version mismatch, 3 = unreadable, 4 = bad pinned hash (should never happen -- a
   // build-time invariant, not a user-triggerable state). A negative code means the process itself
   // crashed before printing anything meaningful (e.g. a missing Visual C++ runtime DLL) -- that must
@@ -300,7 +300,7 @@ begin
   ExistingXex := ExpandConstant('{app}') + '\rom\default.xex';
   if not FileExists(ExistingXex) then Exit;
 
-  XexCheckExe := ExpandConstant('{tmp}') + '\giantrecomp_xexcheck.exe';
+  XexCheckExe := ExpandConstant('{tmp}') + '\giantsrecomp_xexcheck.exe';
   ExtractXexCheckWithRuntime;
   Result := Exec(XexCheckExe, '"' + ExistingXex + '"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
     and (ResultCode = 0);

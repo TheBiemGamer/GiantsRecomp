@@ -1,8 +1,8 @@
 #include "portal/portal_mode.h"
 #include "test_util.h"
 
-using giantrecomp::portal::ParsePortalMode;
-using giantrecomp::portal::PortalMode;
+using giantsrecomp::portal::ParsePortalMode;
+using giantsrecomp::portal::PortalMode;
 
 int main() {
   CHECK(ParsePortalMode("software") == PortalMode::kSoftware);

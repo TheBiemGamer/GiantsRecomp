@@ -10,7 +10,7 @@
 #include "portal/software/software_portal.h"
 #include "test_util.h"
 
-using namespace giantrecomp::portal;
+using namespace giantsrecomp::portal;
 
 static Report Cmd(std::initializer_list<uint8_t> bytes) {
   Report r{};

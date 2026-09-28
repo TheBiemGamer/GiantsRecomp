@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <initializer_list>
 
-namespace giantrecomp::portal {
+namespace giantsrecomp::portal {
 
 namespace {
 
@@ -193,4 +193,4 @@ std::optional<std::filesystem::path> SoftwarePortal::Source(int slot) const {
   return slots_[slot].source;
 }
 
-}  // namespace giantrecomp::portal
+}  // namespace giantsrecomp::portal

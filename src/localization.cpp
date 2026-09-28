@@ -17,7 +17,7 @@ REXCVAR_DEFINE_STRING(language, "english", "Game",
                       "raw Xbox 360 language ID (a number) also works, for languages the disc "
                       "supports that aren't confirmed here yet.");
 
-namespace giantrecomp {
+namespace giantsrecomp {
 
 namespace {
 
@@ -65,4 +65,4 @@ void ApplyLanguageSetting() {
   REXCVAR_SET(user_language, 1u);
 }
 
-}  // namespace giantrecomp
+}  // namespace giantsrecomp

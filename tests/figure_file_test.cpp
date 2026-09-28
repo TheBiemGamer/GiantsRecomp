@@ -6,7 +6,7 @@
 #include "test_util.h"
 
 namespace fs = std::filesystem;
-using namespace giantrecomp::portal;
+using namespace giantsrecomp::portal;
 
 static fs::path WriteTemp(const std::wstring& name, size_t size, uint8_t seed) {
   fs::path p = fs::temp_directory_path() / name;

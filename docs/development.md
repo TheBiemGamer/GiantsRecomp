@@ -1,6 +1,6 @@
 # Development
 
-Building GiantRecomp from source. If you just want to play, download the installer instead — see
+Building GiantsRecomp from source. If you just want to play, download the installer instead — see
 `README.md`.
 
 ## What you need
@@ -39,7 +39,7 @@ If you already cloned without `--recursive`, run `git submodule update --init --
 
 ```
 cmake --preset win-amd64-debug
-cmake --build --preset win-amd64-debug --target giantrecomp_codegen
+cmake --build --preset win-amd64-debug --target giantsrecomp_codegen
 cmake --preset win-amd64-debug
 cmake --build --preset win-amd64-debug
 ```
@@ -69,7 +69,7 @@ If you already cloned without `--recursive`, run `git submodule update --init --
 
 ```
 cmake --preset linux-amd64-debug
-cmake --build --preset linux-amd64-debug --target giantrecomp_codegen
+cmake --build --preset linux-amd64-debug --target giantsrecomp_codegen
 cmake --preset linux-amd64-debug
 cmake --build --preset linux-amd64-debug
 ```
@@ -82,7 +82,7 @@ With `just` installed, all of the above (both platforms) is just `just build-deb
 
 ## For developers
 
-- `giantrecomp_manifest.toml` and `config/default.toml` are the project settings and the fixes needed to convert `default.xex` correctly.
+- `giantsrecomp_manifest.toml` and `config/default.toml` are the project settings and the fixes needed to convert `default.xex` correctly.
 - `src/portal/` is the portal emulation (no dependency on the SDK, with unit tests in `tests/`). `src/hooks/` connects it to the game. `src/game/` holds other game-specific code.
 - `thirdparty/rexglue-sdk` is the ReXGlue SDK, included as a git submodule.
 - `docs/architecture.md` covers the repository layout and portal architecture, `docs/portal-protocol.md` the wire protocol, `docs/figures.md` the figure format and overlay, `docs/build.md` the codegen fixes and testing.

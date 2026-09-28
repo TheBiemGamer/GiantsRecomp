@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship a single `GiantRecompSetup.exe` that installs GiantRecomp from a prebuilt binary, ingests the user's own ROM (ISO or already-extracted folder), writes a configured `giantsrecomp.toml`, and adds a Start Menu entry — no compiler required on the user's machine.
+**Goal:** Ship a single `GiantsRecompSetup.exe` that installs GiantsRecomp from a prebuilt binary, ingests the user's own ROM (ISO or already-extracted folder), writes a configured `giantsrecomp.toml`, and adds a Start Menu entry — no compiler required on the user's machine.
 
-**Architecture:** An Inno Setup script (`installer/GiantRecomp.iss`) drives a wizard with custom Pascal-scripted pages. It stages a locally-built release (`giantrecomp.exe` + runtime DLLs, built by `just build-release` against the maintainer's own legally-owned ROM) plus two small helper tools: a new `giantrecomp_xexcheck` CLI (wraps the existing `xex_verify.cpp` fingerprint check so the wizard can validate a candidate ROM before committing to extraction) and a vendored prebuilt `extract-xiso.exe` (for ISO input). No CI: the maintainer runs `just package-installer` locally to produce the installer, and uploads it to GitHub Releases by hand.
+**Architecture:** An Inno Setup script (`installer/GiantsRecomp.iss`) drives a wizard with custom Pascal-scripted pages. It stages a locally-built release (`giantsrecomp.exe` + runtime DLLs, built by `just build-release` against the maintainer's own legally-owned ROM) plus two small helper tools: a new `giantsrecomp_xexcheck` CLI (wraps the existing `xex_verify.cpp` fingerprint check so the wizard can validate a candidate ROM before committing to extraction) and a vendored prebuilt `extract-xiso.exe` (for ISO input). No CI: the maintainer runs `just package-installer` locally to produce the installer, and uploads it to GitHub Releases by hand.
 
-**Tech Stack:** C++23 (xexcheck CLI, reuses `giantrecomp_verify` from `CMakeLists.txt`), Inno Setup 6 (Pascal Script) for the installer, `extract-xiso` (vendored prebuilt binary) for ISO extraction, Windows' built-in `robocopy.exe` for folder-to-folder copying.
+**Tech Stack:** C++23 (xexcheck CLI, reuses `giantsrecomp_verify` from `CMakeLists.txt`), Inno Setup 6 (Pascal Script) for the installer, `extract-xiso` (vendored prebuilt binary) for ISO extraction, Windows' built-in `robocopy.exe` for folder-to-folder copying.
 
 **Spec:** `docs/superpowers/specs/2026-09-28-installer-design.md`
 
@@ -15,7 +15,7 @@
 - Windows only — no Linux packaging in this plan (spec's Scope section).
 - No CI — the release binary and the installer are both built locally by the maintainer (spec's "Policy change" and "Out of scope" sections).
 - Installer bundles the prebuilt binary; installing needs no network access (spec's Scope section).
-- Install location defaults to `{localappdata}\Programs\GiantRecomp`, never Program Files — the F4 overlay writes `giantsrecomp.toml` live during play and must never hit UAC virtualization (spec's "Install location" section).
+- Install location defaults to `{localappdata}\Programs\GiantsRecomp`, never Program Files — the F4 overlay writes `giantsrecomp.toml` live during play and must never hit UAC virtualization (spec's "Install location" section).
 - The settings wizard page exposes only `portal_mode`, `resolution`, and `resolution_scale` — every other setting stays at its default, editable later via the in-game F4 overlay (spec's wizard step 7).
 - The ROM is always copied/extracted into `<install>\rom\`, never referenced in place, even for an already-extracted folder (spec's wizard step 6).
 - The fingerprint check runs before any extraction/copy, against just `default.xex` pulled out first (spec's wizard step 5).
@@ -38,18 +38,18 @@
 
 New files:
 - `src/tools/xex_check_exit_code.h` — pure enum + mapping function, unit-testable without spawning a process.
-- `src/tools/xex_check_cli.cpp` — thin `main()` wrapping the existing `giantrecomp::VerifyXex`/`DescribeXexProblem` plus the new exit-code mapping.
+- `src/tools/xex_check_cli.cpp` — thin `main()` wrapping the existing `giantsrecomp::VerifyXex`/`DescribeXexProblem` plus the new exit-code mapping.
 - `tests/xex_check_exit_code_test.cpp` — tests the pure mapping function.
 - `installer/extract-xiso.exe` — vendored prebuilt binary.
 - `installer/extract-xiso.LICENSE.txt` — its license text, for redistribution.
 - `installer/settings_template.toml` — a copy of `giantsrecomp.toml.example` with three values replaced by installer placeholder tokens.
 - `installer/disclaimer.txt` — plain-text shown as Inno's built-in pre-install info page.
-- `installer/GiantRecomp.iss` — the Inno Setup script (grown incrementally across Tasks 4-7).
+- `installer/GiantsRecomp.iss` — the Inno Setup script (grown incrementally across Tasks 4-7).
 - `docs/development.md` — building from source (moved out of `README.md`).
 - `docs/releasing.md` — cutting a release (new content).
 
 Modified files:
-- `CMakeLists.txt` — adds the `giantrecomp_xexcheck` executable target and its test.
+- `CMakeLists.txt` — adds the `giantsrecomp_xexcheck` executable target and its test.
 - `justfile` — adds a `package-installer` recipe.
 - `.gitignore` — ignores the installer's staging/output directories.
 - `README.md` — trimmed to player-facing content, "no game code and no game data" becomes "no game data", installer download instructions added.
@@ -62,11 +62,11 @@ Modified files:
 **Files:**
 - Create: `src/tools/xex_check_exit_code.h`
 - Create: `tests/xex_check_exit_code_test.cpp`
-- Modify: `CMakeLists.txt:86-102` (add the test target near the existing `giantrecomp_verify`/`giantrecomp_tests` block)
+- Modify: `CMakeLists.txt:86-102` (add the test target near the existing `giantsrecomp_verify`/`giantsrecomp_tests` block)
 
 **Interfaces:**
-- Consumes: `giantrecomp::XexCheck` (enum in `src/xex_verify.h:10-15`, values `Match`/`Mismatch`/`Unreadable`/`BadExpected`).
-- Produces: `giantrecomp::XexCheckExitCode` enum (`kExitMatch = 0`, `kExitMismatch = 2`, `kExitUnreadable = 3`, `kExitBadExpected = 4`) and `int giantrecomp::ExitCodeForStatus(XexCheck)`, both consumed by Task 2's `xex_check_cli.cpp` and by the Inno script's `Exec()` result-code checks in Task 4.
+- Consumes: `giantsrecomp::XexCheck` (enum in `src/xex_verify.h:10-15`, values `Match`/`Mismatch`/`Unreadable`/`BadExpected`).
+- Produces: `giantsrecomp::XexCheckExitCode` enum (`kExitMatch = 0`, `kExitMismatch = 2`, `kExitUnreadable = 3`, `kExitBadExpected = 4`) and `int giantsrecomp::ExitCodeForStatus(XexCheck)`, both consumed by Task 2's `xex_check_cli.cpp` and by the Inno script's `Exec()` result-code checks in Task 4.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -77,8 +77,8 @@ Create `tests/xex_check_exit_code_test.cpp`:
 
 #include <cstdio>
 
-using giantrecomp::ExitCodeForStatus;
-using giantrecomp::XexCheck;
+using giantsrecomp::ExitCodeForStatus;
+using giantsrecomp::XexCheck;
 
 static int g_failures = 0;
 #define CHECK(cond)                                                        \
@@ -102,7 +102,7 @@ int main() {
 
 - [ ] **Step 2: Wire a test target and confirm it fails to build**
 
-In `CMakeLists.txt`, immediately after the existing block that ends `add_test(NAME xex_verify COMMAND giantrecomp_tests)` (around line 102), add:
+In `CMakeLists.txt`, immediately after the existing block that ends `add_test(NAME xex_verify COMMAND giantsrecomp_tests)` (around line 102), add:
 
 ```cmake
 add_executable(xex_check_exit_code_test tests/xex_check_exit_code_test.cpp)
@@ -122,9 +122,9 @@ Create `src/tools/xex_check_exit_code.h`:
 
 #include "xex_verify.h"
 
-namespace giantrecomp {
+namespace giantsrecomp {
 
-// Exit codes for the giantrecomp_xexcheck CLI. The installer's Inno Setup script reads these via
+// Exit codes for the giantsrecomp_xexcheck CLI. The installer's Inno Setup script reads these via
 // Exec()'s ResultCode to decide whether to proceed past the fingerprint-check wizard step.
 enum XexCheckExitCode {
   kExitMatch = 0,
@@ -147,7 +147,7 @@ inline int ExitCodeForStatus(XexCheck status) {
   return kExitBadExpected;
 }
 
-}  // namespace giantrecomp
+}  // namespace giantsrecomp
 ```
 
 - [ ] **Step 4: Build and run to verify it passes**
@@ -168,11 +168,11 @@ git commit -m "feat: add exit-code mapping for the upcoming xex-check CLI"
 
 **Files:**
 - Create: `src/tools/xex_check_cli.cpp`
-- Modify: `CMakeLists.txt:96` area (add the `giantrecomp_xexcheck` executable target, after `giantrecomp_verify` is defined)
+- Modify: `CMakeLists.txt:96` area (add the `giantsrecomp_xexcheck` executable target, after `giantsrecomp_verify` is defined)
 
 **Interfaces:**
-- Consumes: `giantrecomp::VerifyXex`, `giantrecomp::DescribeXexProblem` (`src/xex_verify.h`), `giantrecomp::ExitCodeForStatus` (Task 1), `GIANTRECOMP_XEX_SHA256` (compile definition already computed in `CMakeLists.txt:77-84` from `docs/game/default.xex.sha256`).
-- Produces: `giantrecomp_xexcheck.exe <path-to-default.xex>` — prints `OK` and exits 0 on a match; prints the human-readable problem to stderr and exits 2/3/4 otherwise. Consumed by the Inno script in Task 4.
+- Consumes: `giantsrecomp::VerifyXex`, `giantsrecomp::DescribeXexProblem` (`src/xex_verify.h`), `giantsrecomp::ExitCodeForStatus` (Task 1), `GIANTSRECOMP_XEX_SHA256` (compile definition already computed in `CMakeLists.txt:77-84` from `docs/game/default.xex.sha256`).
+- Produces: `giantsrecomp_xexcheck.exe <path-to-default.xex>` — prints `OK` and exits 0 on a match; prints the human-readable problem to stderr and exits 2/3/4 otherwise. Consumed by the Inno script in Task 4.
 
 - [ ] **Step 1: Write the CLI**
 
@@ -185,62 +185,62 @@ Create `src/tools/xex_check_cli.cpp`:
 #include <cstdio>
 #include <filesystem>
 
-#ifndef GIANTRECOMP_XEX_SHA256
-#error "GIANTRECOMP_XEX_SHA256 must be defined by the build (see CMakeLists.txt)"
+#ifndef GIANTSRECOMP_XEX_SHA256
+#error "GIANTSRECOMP_XEX_SHA256 must be defined by the build (see CMakeLists.txt)"
 #endif
 
 int main(int argc, char** argv) {
   if (argc != 2) {
     std::fprintf(stderr, "usage: %s <path-to-default.xex>\n",
-                 argc > 0 ? argv[0] : "giantrecomp_xexcheck");
-    return giantrecomp::kExitBadExpected;
+                 argc > 0 ? argv[0] : "giantsrecomp_xexcheck");
+    return giantsrecomp::kExitBadExpected;
   }
 
   const std::filesystem::path xex(argv[1]);
-  const auto result = giantrecomp::VerifyXex(xex, GIANTRECOMP_XEX_SHA256);
-  const auto problem = giantrecomp::DescribeXexProblem(xex, result, GIANTRECOMP_XEX_SHA256);
+  const auto result = giantsrecomp::VerifyXex(xex, GIANTSRECOMP_XEX_SHA256);
+  const auto problem = giantsrecomp::DescribeXexProblem(xex, result, GIANTSRECOMP_XEX_SHA256);
 
   if (problem.empty()) {
     std::puts("OK");
-    return giantrecomp::kExitMatch;
+    return giantsrecomp::kExitMatch;
   }
   std::fputs(problem.c_str(), stderr);
   std::fputc('\n', stderr);
-  return giantrecomp::ExitCodeForStatus(result.status);
+  return giantsrecomp::ExitCodeForStatus(result.status);
 }
 ```
 
 - [ ] **Step 2: Wire the CMake target**
 
-In `CMakeLists.txt`, immediately after the `add_test(NAME xex_verify COMMAND giantrecomp_tests)` line (and after the Task 1 test target you just added), add:
+In `CMakeLists.txt`, immediately after the `add_test(NAME xex_verify COMMAND giantsrecomp_tests)` line (and after the Task 1 test target you just added), add:
 
 ```cmake
-add_executable(giantrecomp_xexcheck src/tools/xex_check_cli.cpp)
-target_link_libraries(giantrecomp_xexcheck PRIVATE giantrecomp_verify)
-target_compile_definitions(giantrecomp_xexcheck PRIVATE GIANTRECOMP_XEX_SHA256="${GIANTRECOMP_XEX_SHA256}")
+add_executable(giantsrecomp_xexcheck src/tools/xex_check_cli.cpp)
+target_link_libraries(giantsrecomp_xexcheck PRIVATE giantsrecomp_verify)
+target_compile_definitions(giantsrecomp_xexcheck PRIVATE GIANTSRECOMP_XEX_SHA256="${GIANTSRECOMP_XEX_SHA256}")
 ```
 
 - [ ] **Step 3: Build it**
 
-Run: `cmake --build --preset win-amd64-release --target giantrecomp_xexcheck`
-Expected: builds cleanly, produces `out/build/win-amd64-release/giantrecomp_xexcheck.exe`.
+Run: `cmake --build --preset win-amd64-release --target giantsrecomp_xexcheck`
+Expected: builds cleanly, produces `out/build/win-amd64-release/giantsrecomp_xexcheck.exe`.
 
 - [ ] **Step 4: Manually verify both outcomes**
 
-Run: `out\build\win-amd64-release\giantrecomp_xexcheck.exe rom\default.xex` (assuming your `rom/` has a valid dump)
+Run: `out\build\win-amd64-release\giantsrecomp_xexcheck.exe rom\default.xex` (assuming your `rom/` has a valid dump)
 Expected: prints `OK`, exit code 0 (check with `echo %ERRORLEVEL%` in cmd, or `echo $LASTEXITCODE` in PowerShell).
 
-Run: `out\build\win-amd64-release\giantrecomp_xexcheck.exe README.md` (any wrong file)
+Run: `out\build\win-amd64-release\giantsrecomp_xexcheck.exe README.md` (any wrong file)
 Expected: prints a mismatch message to stderr, exits with code 2.
 
-Run: `out\build\win-amd64-release\giantrecomp_xexcheck.exe does-not-exist.xex`
+Run: `out\build\win-amd64-release\giantsrecomp_xexcheck.exe does-not-exist.xex`
 Expected: prints "Cannot read..." to stderr, exits with code 3.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/tools/xex_check_cli.cpp CMakeLists.txt
-git commit -m "feat: add giantrecomp_xexcheck CLI for installer ROM validation"
+git commit -m "feat: add giantsrecomp_xexcheck CLI for installer ROM validation"
 ```
 
 ---
@@ -268,7 +268,7 @@ Expected: prints its usage/help text. Read it now and note the exact flags for "
 Create `installer/settings_template.toml` by copying `giantsrecomp.toml.example` and replacing exactly three values with placeholder tokens (keep every comment line and every other setting untouched, so this stays easy to diff against the source file when it's updated):
 
 ```toml
-# Copy next to giantrecomp.exe, rename to "giantsrecomp.toml". Full docs in README.md.
+# Copy next to giantsrecomp.exe, rename to "giantsrecomp.toml". Full docs in README.md.
 # The in-game Settings overlay (F4) reads and writes this same file.
 
 ["Portal"]
@@ -314,11 +314,11 @@ git commit -m "feat: vendor extract-xiso and add the installer's settings templa
 ### Task 4: Inno Setup skeleton (no custom pages yet)
 
 **Files:**
-- Create: `installer/GiantRecomp.iss`
+- Create: `installer/GiantsRecomp.iss`
 - Modify: `.gitignore`
 
 **Interfaces:**
-- Produces: `installer/Output/GiantRecompSetup.exe` when compiled with ISCC — an installer that places a hand-staged set of files, registers a Start Menu group, and runs, with no ROM/settings logic yet (added in Tasks 5-6).
+- Produces: `installer/Output/GiantsRecompSetup.exe` when compiled with ISCC — an installer that places a hand-staged set of files, registers a Start Menu group, and runs, with no ROM/settings logic yet (added in Tasks 5-6).
 - Consumes: files staged manually for this task's verification step (Task 8 automates the staging).
 
 - [ ] **Step 1: Generate a stable AppId**
@@ -341,12 +341,12 @@ this automatically before copying any files.
 
 - [ ] **Step 3: Write the skeleton script**
 
-Create `installer/GiantRecomp.iss` (replace `PASTE-YOUR-GUID-HERE` with the GUID from Step 1, keeping the braces):
+Create `installer/GiantsRecomp.iss` (replace `PASTE-YOUR-GUID-HERE` with the GUID from Step 1, keeping the braces):
 
 ```ini
-#define MyAppName "GiantRecomp"
+#define MyAppName "GiantsRecomp"
 #define MyAppVersion "0.1.0"
-#define MyAppExeName "giantrecomp.exe"
+#define MyAppExeName "giantsrecomp.exe"
 
 [Setup]
 AppId={{PASTE-YOUR-GUID-HERE}
@@ -359,15 +359,15 @@ PrivilegesRequired=lowest
 ArchitecturesInstallIn64BitMode=x64compatible
 InfoBeforeFile=disclaimer.txt
 OutputDir=Output
-OutputBaseFilename=GiantRecompSetup
+OutputBaseFilename=GiantsRecompSetup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 
 [Files]
-Source: "staging\giantrecomp.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "staging\giantsrecomp.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "staging\*.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "staging\giantrecomp_xexcheck.exe"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "staging\giantsrecomp_xexcheck.exe"; DestDir: "{tmp}"; Flags: dontcopy
 Source: "settings_template.toml"; DestDir: "{tmp}"; Flags: dontcopy
 Source: "extract-xiso.exe"; DestDir: "{tmp}"; Flags: dontcopy
 
@@ -382,7 +382,7 @@ Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: no
 A few notes on choices here, since a fresh reader won't have the context:
 - `PrivilegesRequired=lowest` plus `DefaultDirName={localappdata}\...` is what makes this a no-admin, per-user install (spec's "Install location" section) — no UAC prompt, and the F4 overlay's live writes to `giantsrecomp.toml` next to the exe just work.
 - `InfoBeforeFile=disclaimer.txt` is a built-in Inno mechanism: it shows the file's text as its own automatic wizard page before directory selection, no custom Pascal Script needed for this one.
-- `giantrecomp_xexcheck.exe`, `settings_template.toml`, and `extract-xiso.exe` all use `Flags: dontcopy`: they're needed *during* the install (read/run from `{tmp}`) but shouldn't end up copied into `{app}` as part of the permanent install — Tasks 5-7's Pascal Script explicitly extracts each into `{tmp}` on demand via `ExtractTemporaryFile`, by exactly the filename given here.
+- `giantsrecomp_xexcheck.exe`, `settings_template.toml`, and `extract-xiso.exe` all use `Flags: dontcopy`: they're needed *during* the install (read/run from `{tmp}`) but shouldn't end up copied into `{app}` as part of the permanent install — Tasks 5-7's Pascal Script explicitly extracts each into `{tmp}` on demand via `ExtractTemporaryFile`, by exactly the filename given here.
 - `skipifsourcedoesntexist` on the `*.dll` line: some release builds have no extra runtime DLLs to copy (matches the same conditional pattern already used in the justfile's `package-release` recipe).
 
 - [ ] **Step 4: Stage a real build and compile**
@@ -392,19 +392,19 @@ You need Inno Setup 6 installed (download from jrsoftware.org, or `winget instal
 ```powershell
 just build-release
 New-Item -ItemType Directory -Force installer\staging
-Copy-Item out\build\win-amd64-release\giantrecomp.exe installer\staging\
-Copy-Item out\build\win-amd64-release\giantrecomp_xexcheck.exe installer\staging\
+Copy-Item out\build\win-amd64-release\giantsrecomp.exe installer\staging\
+Copy-Item out\build\win-amd64-release\giantsrecomp_xexcheck.exe installer\staging\
 Copy-Item out\build\win-amd64-release\*.dll installer\staging\ -ErrorAction SilentlyContinue
 ```
 
-Then compile: `& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\GiantRecomp.iss`
-Expected: compiles with no errors, produces `installer\Output\GiantRecompSetup.exe`.
+Then compile: `& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\GiantsRecomp.iss`
+Expected: compiles with no errors, produces `installer\Output\GiantsRecompSetup.exe`.
 
 - [ ] **Step 5: Manually run and verify the skeleton install**
 
-Run `installer\Output\GiantRecompSetup.exe`. Expected: the disclaimer page from Step 2 appears before directory selection, no UAC prompt, installs to `%LocalAppData%\Programs\GiantRecomp`, Start Menu gets a "GiantRecomp" group with both shortcuts, "Launch GiantRecomp" checkbox on finish works (it will fail to actually run correctly without a `rom\` folder yet — that's expected, later tasks add ROM handling; just confirm the exe attempts to launch).
+Run `installer\Output\GiantsRecompSetup.exe`. Expected: the disclaimer page from Step 2 appears before directory selection, no UAC prompt, installs to `%LocalAppData%\Programs\GiantsRecomp`, Start Menu gets a "GiantsRecomp" group with both shortcuts, "Launch GiantsRecomp" checkbox on finish works (it will fail to actually run correctly without a `rom\` folder yet — that's expected, later tasks add ROM handling; just confirm the exe attempts to launch).
 
-Uninstall via the Start Menu's "Uninstall GiantRecomp" shortcut. Expected: removes the install directory cleanly.
+Uninstall via the Start Menu's "Uninstall GiantsRecomp" shortcut. Expected: removes the install directory cleanly.
 
 - [ ] **Step 6: Ignore build output**
 
@@ -418,7 +418,7 @@ Add to `.gitignore` (after the existing `/dist` line):
 - [ ] **Step 7: Commit**
 
 ```bash
-git add installer/GiantRecomp.iss installer/disclaimer.txt .gitignore
+git add installer/GiantsRecomp.iss installer/disclaimer.txt .gitignore
 git commit -m "feat: add Inno Setup skeleton for the Windows installer"
 ```
 
@@ -427,15 +427,15 @@ git commit -m "feat: add Inno Setup skeleton for the Windows installer"
 ### Task 5: ROM source page, fingerprint check, and extraction/copy
 
 **Files:**
-- Modify: `installer/GiantRecomp.iss` (add `[Code]` section and a custom wizard page)
+- Modify: `installer/GiantsRecomp.iss` (add `[Code]` section and a custom wizard page)
 
 **Interfaces:**
-- Consumes: `giantrecomp_xexcheck.exe` (Task 2, staged into `{tmp}` for this task's verification — Task 8 wires it permanently), `extract-xiso.exe` (Task 3/4).
+- Consumes: `giantsrecomp_xexcheck.exe` (Task 2, staged into `{tmp}` for this task's verification — Task 8 wires it permanently), `extract-xiso.exe` (Task 3/4).
 - Produces: `{app}\rom\default.xex` (and the rest of the extracted/copied game files) by the time this page's `NextButtonClick` returns true. Consumed by Task 6 (settings page comes after this one) and Task 7 (update-run detection reads this same path).
 
 - [ ] **Step 1: Add the custom page and its controls**
 
-Add this to `installer/GiantRecomp.iss`, after the `[Run]` section:
+Add this to `installer/GiantsRecomp.iss`, after the `[Run]` section:
 
 ```ini
 [Code]
@@ -512,7 +512,7 @@ end;
 
 - [ ] **Step 2: Compile to check for syntax errors so far**
 
-Run: `& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\GiantRecomp.iss`
+Run: `& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\GiantsRecomp.iss`
 Expected: compiles cleanly (the page exists but nothing calls it yet, and there's no logic behind the button — that's normal at this point). Fix any reported line/column error against Inno Setup's Pascal Scripting help (`Help > Pascal Scripting Reference` in the IDE) before moving on.
 
 - [ ] **Step 3: Add the fingerprint check and extraction/copy logic**
@@ -596,8 +596,8 @@ begin
     Exit;
   end;
 
-  XexCheckExe := ExpandConstant('{tmp}') + '\giantrecomp_xexcheck.exe';
-  ExtractTemporaryFile('giantrecomp_xexcheck.exe');
+  XexCheckExe := ExpandConstant('{tmp}') + '\giantsrecomp_xexcheck.exe';
+  ExtractTemporaryFile('giantsrecomp_xexcheck.exe');
   if not Exec(XexCheckExe, '"' + CandidateXex + '"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then begin
     ErrorMsg := 'Could not run the version-check tool.';
     if IsIso then DelTree(ExpandConstant('{app}') + '\rom', True, True, True);
@@ -668,12 +668,12 @@ end;
 
 - [ ] **Step 5: Compile and manually verify both paths**
 
-Run: `& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\GiantRecomp.iss`
+Run: `& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\GiantsRecomp.iss`
 Expected: compiles cleanly.
 
 Run the resulting installer three times manually:
-1. Point it at your real extracted `rom\` folder. Expected: passes the check, copies into `%LocalAppData%\Programs\GiantRecomp\rom`, `default.xex` ends up there.
-2. Point the folder picker at `%LocalAppData%\Programs\GiantRecomp` itself (the install target). Expected: rejected with the self-copy error message, before any copying starts.
+1. Point it at your real extracted `rom\` folder. Expected: passes the check, copies into `%LocalAppData%\Programs\GiantsRecomp\rom`, `default.xex` ends up there.
+2. Point the folder picker at `%LocalAppData%\Programs\GiantsRecomp` itself (the install target). Expected: rejected with the self-copy error message, before any copying starts.
 3. Point it at some other unrelated file/folder (wrong version or no `default.xex`). Expected: rejected with the version/missing-file message, no copying attempted.
 
 If you have a real ISO available, repeat case 1 with `-x -d` extraction instead of the folder-copy path, and confirm `installer\extract-xiso.exe -h`'s actual flags (checked in Task 3, Step 1) match what this task assumed; adjust the `Exec` parameter strings above if not.
@@ -681,7 +681,7 @@ If you have a real ISO available, repeat case 1 with `-x -d` extraction instead 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add installer/GiantRecomp.iss
+git add installer/GiantsRecomp.iss
 git commit -m "feat: add ROM source page with fingerprint check and extraction"
 ```
 
@@ -690,7 +690,7 @@ git commit -m "feat: add ROM source page with fingerprint check and extraction"
 ### Task 6: Essentials settings page and toml generation
 
 **Files:**
-- Modify: `installer/GiantRecomp.iss`
+- Modify: `installer/GiantsRecomp.iss`
 
 **Interfaces:**
 - Consumes: `installer/settings_template.toml` (Task 3), placeholder tokens `__PORTAL_MODE__`/`__RESOLUTION__`/`__RESOLUTION_SCALE__`.
@@ -807,17 +807,17 @@ begin
 
 - [ ] **Step 4: Compile and manually verify**
 
-Run: `& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\GiantRecomp.iss`
+Run: `& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\GiantsRecomp.iss`
 Expected: compiles cleanly.
 
-Run the installer, choose `usb` for portal mode, `2560x1440` for resolution, `2` for resolution scale, finish the install. Expected: `%LocalAppData%\Programs\GiantRecomp\giantsrecomp.toml` contains `portal_mode = "usb"`, `resolution = "2560x1440"`, `resolution_scale = 2`, and every other line matches `giantsrecomp.toml.example` unchanged.
+Run the installer, choose `usb` for portal mode, `2560x1440` for resolution, `2` for resolution scale, finish the install. Expected: `%LocalAppData%\Programs\GiantsRecomp\giantsrecomp.toml` contains `portal_mode = "usb"`, `resolution = "2560x1440"`, `resolution_scale = 2`, and every other line matches `giantsrecomp.toml.example` unchanged.
 
 Re-run the installer over the same install without deleting anything. Expected: the settings page still appears (update-skip logic is Task 7, not yet built), but `giantsrecomp.toml` is left untouched (still shows your `usb`/`2560x1440`/`2` choices even if you pick different values on the second run) because `WriteSettingsFile` exits early when the file already exists.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add installer/GiantRecomp.iss
+git add installer/GiantsRecomp.iss
 git commit -m "feat: add essentials settings page and toml generation"
 ```
 
@@ -826,10 +826,10 @@ git commit -m "feat: add essentials settings page and toml generation"
 ### Task 7: Update-run detection and uninstall confirmation
 
 **Files:**
-- Modify: `installer/GiantRecomp.iss`
+- Modify: `installer/GiantsRecomp.iss`
 
 **Interfaces:**
-- Consumes: `{app}\rom\default.xex` and `{app}\giantsrecomp.toml` (written by Tasks 5-6), `giantrecomp_xexcheck.exe` (Task 2).
+- Consumes: `{app}\rom\default.xex` and `{app}\giantsrecomp.toml` (written by Tasks 5-6), `giantsrecomp_xexcheck.exe` (Task 2).
 - Produces: `ShouldSkipPageID(PageID: Integer): Boolean` (Inno's own `ShouldSkipPage` event, used to skip the ROM and settings pages on a valid update run), `InitializeUninstall`/`CurUninstallStepChanged` (opt-in delete confirmation).
 
 - [ ] **Step 1: Detect a valid existing install**
@@ -848,8 +848,8 @@ begin
   ExistingXex := ExpandConstant('{app}') + '\rom\default.xex';
   if not FileExists(ExistingXex) then Exit;
 
-  XexCheckExe := ExpandConstant('{tmp}') + '\giantrecomp_xexcheck.exe';
-  ExtractTemporaryFile('giantrecomp_xexcheck.exe');
+  XexCheckExe := ExpandConstant('{tmp}') + '\giantsrecomp_xexcheck.exe';
+  ExtractTemporaryFile('giantsrecomp_xexcheck.exe');
   Result := Exec(XexCheckExe, '"' + ExistingXex + '"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
     and (ResultCode = 0);
 end;
@@ -870,7 +870,7 @@ end;
 
 - [ ] **Step 3: Compile and manually verify the update path**
 
-Run: `& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\GiantRecomp.iss`
+Run: `& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\GiantsRecomp.iss`
 Expected: compiles cleanly.
 
 With a prior successful install already in place (from Task 6's verification), re-run the installer. Expected: the wizard goes straight from the install-directory page to the finish page — no ROM page, no settings page — and both `rom\` and `giantsrecomp.toml` are untouched (spot-check the toml still has your earlier choices).
@@ -923,19 +923,19 @@ end;
 
 - [ ] **Step 5: Compile and manually verify uninstall**
 
-Run: `& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\GiantRecomp.iss`
+Run: `& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\GiantsRecomp.iss`
 Expected: compiles cleanly.
 
 Uninstall via the Start Menu shortcut, answer "No" to the prompt. Expected: `rom\` and `giantsrecomp.toml` remain in the (now otherwise empty) install directory.
 
 Reinstall, then uninstall again and answer "Yes". Expected: `rom\` and `giantsrecomp.toml` are both gone.
 
-Reinstall once more, then run `"%LocalAppData%\Programs\GiantRecomp\unins000.exe" /VERYSILENT` from a terminal. Expected: uninstalls without showing any dialog, and `rom\`/`giantsrecomp.toml` are left in place (silent default is "do not delete").
+Reinstall once more, then run `"%LocalAppData%\Programs\GiantsRecomp\unins000.exe" /VERYSILENT` from a terminal. Expected: uninstalls without showing any dialog, and `rom\`/`giantsrecomp.toml` are left in place (silent default is "do not delete").
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add installer/GiantRecomp.iss
+git add installer/GiantsRecomp.iss
 git commit -m "feat: add update-run page skipping and opt-in uninstall cleanup"
 ```
 
@@ -948,7 +948,7 @@ git commit -m "feat: add update-run page skipping and opt-in uninstall cleanup"
 - Modify: `.gitignore` (already covers `/installer/staging/` and `/installer/Output/` from Task 4 — verify no further change needed)
 
 **Interfaces:**
-- Produces: `installer\Output\GiantRecompSetup.exe`, built end-to-end from one command, replacing the manual staging steps used for verification in Tasks 4-7.
+- Produces: `installer\Output\GiantsRecompSetup.exe`, built end-to-end from one command, replacing the manual staging steps used for verification in Tasks 4-7.
 
 - [ ] **Step 1: Find ISCC on the machine**
 
@@ -964,16 +964,16 @@ In `justfile`, add this after the existing `package-release` recipe (before the 
 package-installer: build-release
     rm -rf installer/staging && \
     mkdir -p installer/staging && \
-    cp out/build/win-amd64-release/giantrecomp.exe installer/staging/ && \
+    cp out/build/win-amd64-release/giantsrecomp.exe installer/staging/ && \
     for lib in out/build/win-amd64-release/*.dll {{ sdk_lib_dir }}/*.dll; do [ -e "$lib" ] && cp "$lib" installer/staging/; done && \
-    "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" installer/GiantRecomp.iss && \
-    echo "Installer built at installer/Output/GiantRecompSetup.exe"
+    "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" installer/GiantsRecomp.iss && \
+    echo "Installer built at installer/Output/GiantsRecompSetup.exe"
 ```
 
 - [ ] **Step 3: Run it end-to-end**
 
 Run: `just package-installer`
-Expected: builds the release binary if needed, stages it, compiles the installer, and prints the success message. Run the resulting `installer\Output\GiantRecompSetup.exe` once more to confirm it's a fully working install (this exercises the exact artifact a real release would ship).
+Expected: builds the release binary if needed, stages it, compiles the installer, and prints the success message. Run the resulting `installer\Output\GiantsRecompSetup.exe` once more to confirm it's a fully working install (this exercises the exact artifact a real release would ship).
 
 - [ ] **Step 4: Commit**
 
@@ -1002,7 +1002,7 @@ Move the following sections out of `README.md` verbatim: the entire "Setup" sect
 ```markdown
 # Development
 
-Building GiantRecomp from source. If you just want to play, download the installer instead — see
+Building GiantsRecomp from source. If you just want to play, download the installer instead — see
 `README.md`.
 
 ## What you need
@@ -1037,8 +1037,8 @@ just package-installer
 ```
 
 This builds the release binary (`just build-release`), stages it with the installer's other
-inputs, and compiles `installer/GiantRecomp.iss` with Inno Setup, producing
-`installer/Output/GiantRecompSetup.exe`. See `installer/GiantRecomp.iss` and the `package-installer`
+inputs, and compiles `installer/GiantsRecomp.iss` with Inno Setup, producing
+`installer/Output/GiantsRecompSetup.exe`. See `installer/GiantsRecomp.iss` and the `package-installer`
 recipe in `justfile` for what it does under the hood.
 
 ## Before publishing, verify
@@ -1050,17 +1050,17 @@ recipe in `justfile` for what it does under the hood.
   saves, and only replaces the binary.
 - Uninstalling leaves `rom/` and the toml in place unless the opt-in prompt is answered "Yes";
   `unins000.exe /VERYSILENT` never prompts and defaults to leaving them.
-- The Start Menu shortcut launches the game, and an "Uninstall GiantRecomp" entry appears in both
+- The Start Menu shortcut launches the game, and an "Uninstall GiantsRecomp" entry appears in both
   the Start Menu and Windows' Add/Remove Programs.
 
 ## Publish
 
-Upload `installer/Output/GiantRecompSetup.exe` to a new GitHub Release. Note in the release
+Upload `installer/Output/GiantsRecompSetup.exe` to a new GitHub Release. Note in the release
 description which exact game version/region the installer was built and tested against.
 
 ## Bump the version
 
-`installer/GiantRecomp.iss`'s `MyAppVersion` define should match the release tag before compiling.
+`installer/GiantsRecomp.iss`'s `MyAppVersion` define should match the release tag before compiling.
 ```
 
 - [ ] **Step 3: Rewrite `README.md`**
@@ -1070,7 +1070,7 @@ Remove the "Setup" and "For developers" sections entirely (moved to `docs/develo
 ```markdown
 ## Installing
 
-Download the latest `GiantRecompSetup.exe` from
+Download the latest `GiantsRecompSetup.exe` from
 [Releases](https://github.com/TheBiemGamer/GiantsRecomp/releases), run it, and point it at your
 own Skylanders Giants disc — either the ISO file directly, or an already-extracted folder. The
 installer also lets you choose your Portal of Power mode and display resolution up front (anything
@@ -1088,12 +1088,12 @@ This repository contains **no game data**. You need your own copy of the game.
 
 (Immediately below the project pitch paragraph, same location as today.)
 
-Update the "Playing" section: it currently assumes a source build's `out\build\...\giantrecomp.exe` path. Change its opening line to clarify it applies to a source build (installer users don't need this section — they use the Start Menu shortcut):
+Update the "Playing" section: it currently assumes a source build's `out\build\...\giantsrecomp.exe` path. Change its opening line to clarify it applies to a source build (installer users don't need this section — they use the Start Menu shortcut):
 
 ```markdown
 ## Playing
 
-If you installed via `GiantRecompSetup.exe`, use the Start Menu shortcut. If you built from
+If you installed via `GiantsRecompSetup.exe`, use the Start Menu shortcut. If you built from
 source, run it from the project folder:
 ```
 

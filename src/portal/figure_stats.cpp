@@ -14,7 +14,7 @@ extern "C" {
 // actual (C-linkage) definition -- declared directly here instead of including that header.
 extern "C" void* md5_buffer(const char* buffer, size_t len, void* resblock);
 
-namespace giantrecomp::portal {
+namespace giantsrecomp::portal {
 
 namespace {
 
@@ -140,4 +140,4 @@ std::optional<FigureStats> ParseFigureStats(const FigureData& data) {
   return stats;
 }
 
-}  // namespace giantrecomp::portal
+}  // namespace giantsrecomp::portal

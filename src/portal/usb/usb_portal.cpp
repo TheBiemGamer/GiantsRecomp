@@ -7,7 +7,7 @@
 #include <rex/logging.h>
 #include <rex/string/utf8.h>
 
-namespace giantrecomp::portal {
+namespace giantsrecomp::portal {
 
 namespace {
 
@@ -275,4 +275,4 @@ std::optional<FigureData> UsbPortal::CachedFigureData(int slot) const {
   return slot_cache_[slot];
 }
 
-}  // namespace giantrecomp::portal
+}  // namespace giantsrecomp::portal

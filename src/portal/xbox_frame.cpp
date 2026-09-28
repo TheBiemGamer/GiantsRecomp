@@ -2,7 +2,7 @@
 
 #include <cstring>
 
-namespace giantrecomp::portal {
+namespace giantsrecomp::portal {
 
 std::optional<Report> ReportFromFrame(const uint8_t* frame) {
   if (frame[0] != kFrameHeader0 || frame[1] != kFrameHeader1) return std::nullopt;
@@ -17,4 +17,4 @@ void FrameFromReport(const Report& report, uint8_t* frame) {
   std::memcpy(frame + 2, report.data(), kFramePayload);
 }
 
-}  // namespace giantrecomp::portal
+}  // namespace giantsrecomp::portal

@@ -3,7 +3,7 @@
 #include <optional>
 #include <string_view>
 
-namespace giantrecomp::portal {
+namespace giantsrecomp::portal {
 
 enum class PortalMode { kNone, kSoftware, kUsb };
 
@@ -11,4 +11,4 @@ enum class PortalMode { kNone, kSoftware, kUsb };
 // including modes that do not exist, gives nullopt.
 std::optional<PortalMode> ParsePortalMode(std::string_view text);
 
-}  // namespace giantrecomp::portal
+}  // namespace giantsrecomp::portal

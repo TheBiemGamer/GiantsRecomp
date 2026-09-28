@@ -10,7 +10,7 @@
 
 #include "portal/portal_device.h"
 
-namespace giantrecomp::portal {
+namespace giantsrecomp::portal {
 
 // A portal implemented in software. Answers the game's command reports, holds up to 16 figures,
 // and can be driven from another thread through PlaceFigure / RemoveFigure.
@@ -75,4 +75,4 @@ class SoftwarePortal : public PortalDevice {
   std::function<void(const char*, int, int, const uint8_t*, size_t)> research_log_;
 };
 
-}  // namespace giantrecomp::portal
+}  // namespace giantsrecomp::portal

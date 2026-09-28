@@ -9,7 +9,7 @@ How Giants Recompiled is put together, and how the game talks to a Portal of Pow
 ```
 GiantsRecomp/
   rom/                       user's own game dump, git-ignored (except rom/README.md)
-  giantrecomp_manifest.toml  ReXGlue project manifest
+  giantsrecomp_manifest.toml  ReXGlue project manifest
   config/default.toml        codegen fixes for default.xex (included by the manifest)
   generated/                 codegen output, git-ignored (rexglue.cmake is tracked)
   src/

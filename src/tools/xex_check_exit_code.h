@@ -2,9 +2,9 @@
 
 #include "xex_verify.h"
 
-namespace giantrecomp {
+namespace giantsrecomp {
 
-// Exit codes for the giantrecomp_xexcheck CLI. The installer's Inno Setup script reads these via
+// Exit codes for the giantsrecomp_xexcheck CLI. The installer's Inno Setup script reads these via
 // Exec()'s ResultCode to decide whether to proceed past the fingerprint-check wizard step.
 enum XexCheckExitCode {
   kExitMatch = 0,
@@ -27,4 +27,4 @@ inline int ExitCodeForStatus(XexCheck status) {
   return kExitBadExpected;
 }
 
-}  // namespace giantrecomp
+}  // namespace giantsrecomp

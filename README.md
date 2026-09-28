@@ -34,7 +34,7 @@ This is a solo, for-fun project to see whether a static recompilation of Skyland
 
 ## Installing
 
-Download the latest `GiantRecompSetup.exe` from
+Download the latest `GiantsRecompSetup.exe` from
 [Releases](https://github.com/TheBiemGamer/GiantsRecomp/releases), run it, and point it at your
 own Skylanders Giants disc — either the ISO file directly, or an already-extracted folder. The
 installer also lets you choose your Portal of Power mode and display resolution up front (anything
@@ -45,12 +45,12 @@ in `docs/development.md`.
 
 ## Playing
 
-If you installed via `GiantRecompSetup.exe`, use the Start Menu shortcut. If you built from
+If you installed via `GiantsRecompSetup.exe`, use the Start Menu shortcut. If you built from
 source, run it from the project folder (`out\build\win-amd64-release` if you built Release, `win-amd64-debug` otherwise; `out/build/linux-amd64-release` etc. on Linux, no `.exe`):
 
 ```
-out\build\win-amd64-release\giantrecomp.exe   # Windows
-out/build/linux-amd64-release/giantrecomp     # Linux
+out\build\win-amd64-release\giantsrecompiled.exe   # Windows
+out/build/linux-amd64-release/giantsrecompiled     # Linux
 ```
 
 Or, with `just`: `just play-release` (or `just play-debug`) — builds first if needed, then runs it.
@@ -58,7 +58,7 @@ Or, with `just`: `just play-release` (or `just play-debug`) — builds first if 
 That's it if `rom\default.xex` exists — no flags needed for the common case. 
 ### Settings file
 
-Copy [`giantsrecomp.toml.example`](giantsrecomp.toml.example) next to `giantrecomp.exe` and rename it to `giantsrecomp.toml` to change any of the following without typing flags every time (the in-game **Settings** overlay, **F4**, reads and writes this same file):
+Copy [`giantsrecomp.toml.example`](giantsrecomp.toml.example) next to `giantsrecompiled.exe` and rename it to `giantsrecomp.toml` to change any of the following without typing flags every time (the in-game **Settings** overlay, **F4**, reads and writes this same file):
 
 - `portal_mode`: `"software"` (default) uses the virtual portal; `"usb"` uses a real, physically connected Portal of Power (tested with a Wii U Traptanium portal) — just plug it in, no driver changes needed; `"none"` disables the portal.
 - `portal_figures_dir`: the folder the in-game figure picker searches and creates new figures in. Press **F6** to open it (mouse only for now): browse your dumps, or create a new figure by name, grouped by game and release order. Leave empty (the default) to use a `figures` folder next to your saves.

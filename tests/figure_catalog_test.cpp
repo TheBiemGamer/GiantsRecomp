@@ -6,7 +6,7 @@
 #include "test_util.h"
 
 namespace fs = std::filesystem;
-using namespace giantrecomp::portal;
+using namespace giantsrecomp::portal;
 
 static void Touch(const fs::path& p) {
   fs::create_directories(p.parent_path());

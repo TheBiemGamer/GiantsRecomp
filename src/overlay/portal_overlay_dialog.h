@@ -16,7 +16,7 @@ namespace rex::ui {
 class ImGuiDrawer;
 }  // namespace rex::ui
 
-namespace giantrecomp {
+namespace giantsrecomp {
 
 // The in-game figure picker (F6). Browses .dump files under the portal_figures_dir cvar and
 // places or removes a figure in a chosen slot (0-15) on the active software portal. Talks only to
@@ -46,4 +46,4 @@ class PortalOverlayDialog : public rex::ui::ImGuiDialog {
   std::string usb_dump_message_;  // result of the last "Dump to file" click, shown until the next one
 };
 
-}  // namespace giantrecomp
+}  // namespace giantsrecomp

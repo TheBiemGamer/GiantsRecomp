@@ -8,7 +8,7 @@
 
 #include "portal/portal_device.h"
 
-namespace giantrecomp::portal {
+namespace giantsrecomp::portal {
 
 // Reads a raw figure dump: exactly kFigureSize (1024) bytes, 64 blocks of 16. Returns nullopt if the
 // path is not a regular file or its size is anything else. The file is only read, never modified.
@@ -36,4 +36,4 @@ FigureData CreateBlankFigure(uint16_t id, uint16_t variant, std::array<uint8_t, 
 // or anything else -- it only picks a name.
 std::filesystem::path UniqueFigurePath(const std::filesystem::path& dir, std::string_view name);
 
-}  // namespace giantrecomp::portal
+}  // namespace giantsrecomp::portal

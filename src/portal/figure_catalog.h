@@ -7,7 +7,7 @@
 #include <string_view>
 #include <vector>
 
-namespace giantrecomp::portal {
+namespace giantsrecomp::portal {
 
 struct SkylanderInfo {
   uint16_t id;
@@ -37,4 +37,4 @@ struct FigureCatalogEntry {
 // entries with no game sort first.
 std::vector<FigureCatalogEntry> ScanFigureCatalog(const std::filesystem::path& root);
 
-}  // namespace giantrecomp::portal
+}  // namespace giantsrecomp::portal

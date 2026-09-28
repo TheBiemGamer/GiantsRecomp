@@ -5,7 +5,7 @@
 #include <string>
 #include <string_view>
 
-namespace giantrecomp {
+namespace giantsrecomp {
 
 enum class XexCheck {
   Match,        // file hashes to the expected value
@@ -34,4 +34,4 @@ std::string Utf8(const std::filesystem::path& p);
 std::string DescribeXexProblem(const std::filesystem::path& xex, const XexCheckResult& result,
                                std::string_view expected_sha256);
 
-}  // namespace giantrecomp
+}  // namespace giantsrecomp

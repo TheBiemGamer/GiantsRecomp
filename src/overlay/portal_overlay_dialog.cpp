@@ -17,9 +17,9 @@
 #include "portal/portal_mode.h"
 #include "portal/software/software_portal.h"
 #include "portal/usb/usb_portal.h"
-#include "xex_verify.h"  // giantrecomp::Utf8: path -> UTF-8, never throws on non-ANSI characters
+#include "xex_verify.h"  // giantsrecomp::Utf8: path -> UTF-8, never throws on non-ANSI characters
 
-namespace giantrecomp {
+namespace giantsrecomp {
 
 namespace {
 
@@ -293,4 +293,4 @@ void PortalOverlayDialog::OnDraw(ImGuiIO& io) {
   ImGui::End();
 }
 
-}  // namespace giantrecomp
+}  // namespace giantsrecomp

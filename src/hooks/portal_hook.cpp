@@ -35,9 +35,9 @@ REXCVAR_DEFINE_STRING(portal_figures_dir, "", "Portal",
 
 namespace {
 
-std::atomic<giantrecomp::portal::PortalDevice*> g_portal{nullptr};
-std::atomic<giantrecomp::portal::SoftwarePortal*> g_software_portal{nullptr};
-std::atomic<giantrecomp::portal::UsbPortal*> g_usb_portal{nullptr};
+std::atomic<giantsrecomp::portal::PortalDevice*> g_portal{nullptr};
+std::atomic<giantsrecomp::portal::SoftwarePortal*> g_software_portal{nullptr};
+std::atomic<giantsrecomp::portal::UsbPortal*> g_usb_portal{nullptr};
 
 // portal_figure/portal_figures_dir arrive as UTF-8; convert explicitly so non-ANSI characters
 // survive (path::string() would throw for characters outside the ANSI code page).
@@ -72,11 +72,11 @@ std::string HexBytes(const uint8_t* data, size_t n) {
 constexpr int kAnnounceAddedReports = 8;  // matches SoftwarePortal's own kAddedReports
 enum class AnnouncePhase { kForceEmpty, kForceAdded, kDone };
 
-void ForceStatusEmpty(giantrecomp::portal::Report& report) {
+void ForceStatusEmpty(giantsrecomp::portal::Report& report) {
   for (int i = 1; i <= 4; ++i) report[i] = 0;
 }
 
-void ForceStatusPresentToAdded(giantrecomp::portal::Report& report) {
+void ForceStatusPresentToAdded(giantsrecomp::portal::Report& report) {
   for (int byte = 1; byte <= 4; ++byte) {
     uint8_t out = 0;
     for (int pair = 0; pair < 4; ++pair) {
@@ -91,7 +91,7 @@ void ForceStatusPresentToAdded(giantrecomp::portal::Report& report) {
 // Advances `phase`/`added_reports` and applies the announce transform to `report` in place.
 // Callers own their own phase/counter pair, since TransitioningPortal only ever runs this once
 // while UsbHotPlugPortal resets and re-runs it on every reconnect.
-void ApplyAnnounceStep(giantrecomp::portal::Report& report, AnnouncePhase& phase,
+void ApplyAnnounceStep(giantsrecomp::portal::Report& report, AnnouncePhase& phase,
                        int& added_reports) {
   if (report[0] != 0x53 || phase == AnnouncePhase::kDone) return;
   if (phase == AnnouncePhase::kForceEmpty) {
@@ -106,28 +106,28 @@ void ApplyAnnounceStep(giantrecomp::portal::Report& report, AnnouncePhase& phase
 // Wraps a freshly-installed PortalDevice for the first few status reports after a portal switch
 // (see ApplyAnnounceStep above), then permanent, untouched passthrough. Used for the software
 // side of a live switch -- SoftwarePortal doesn't need hot-plug recovery, just the announce.
-class TransitioningPortal final : public giantrecomp::portal::PortalDevice {
+class TransitioningPortal final : public giantsrecomp::portal::PortalDevice {
  public:
-  explicit TransitioningPortal(giantrecomp::portal::PortalDevice* real) : real_(real) {}
+  explicit TransitioningPortal(giantsrecomp::portal::PortalDevice* real) : real_(real) {}
 
-  void Write(const giantrecomp::portal::Report& report) override { real_->Write(report); }
+  void Write(const giantsrecomp::portal::Report& report) override { real_->Write(report); }
 
-  giantrecomp::portal::Report Read() override {
-    giantrecomp::portal::Report report = real_->Read();
+  giantsrecomp::portal::Report Read() override {
+    giantsrecomp::portal::Report report = real_->Read();
     ApplyAnnounceStep(report, phase_, added_reports_);
     return report;
   }
 
  private:
-  giantrecomp::portal::PortalDevice* real_;
+  giantsrecomp::portal::PortalDevice* real_;
   AnnouncePhase phase_ = AnnouncePhase::kForceEmpty;
   int added_reports_ = 0;
 };
 
 // Builds a ready-to-use UsbPortal, or nullptr if no matching device is connected. Never stored
 // anywhere itself -- callers decide whether to publish it (SwitchPortalMode) or discard it.
-giantrecomp::portal::UsbPortal* SetUpUsbPortal() {
-  auto* usb = new giantrecomp::portal::UsbPortal();  // never freed if published, see below
+giantsrecomp::portal::UsbPortal* SetUpUsbPortal() {
+  auto* usb = new giantsrecomp::portal::UsbPortal();  // never freed if published, see below
   if (usb->IsOpen()) return usb;
   delete usb;  // never published anywhere, so nothing else could have seen this one -- safe to free
   return nullptr;
@@ -141,19 +141,19 @@ giantrecomp::portal::UsbPortal* SetUpUsbPortal() {
 // re-runs the announce dance so the game picks up whatever figure is now on the portal instead of
 // showing stale state. Never publishes a UsbPortal that failed to open (SetUpUsbPortal already
 // frees those), so g_usb_portal only ever points at a real, currently-connected device or null.
-class UsbHotPlugPortal final : public giantrecomp::portal::PortalDevice {
+class UsbHotPlugPortal final : public giantsrecomp::portal::PortalDevice {
  public:
   UsbHotPlugPortal() { TryConnect(); }
 
-  void Write(const giantrecomp::portal::Report& report) override {
+  void Write(const giantsrecomp::portal::Report& report) override {
     MaybeReconnect();
     if (current_) current_->Write(report);
   }
 
-  giantrecomp::portal::Report Read() override {
+  giantsrecomp::portal::Report Read() override {
     MaybeReconnect();
-    giantrecomp::portal::Report report =
-        current_ ? current_->Read() : giantrecomp::portal::Report{};
+    giantsrecomp::portal::Report report =
+        current_ ? current_->Read() : giantsrecomp::portal::Report{};
     ApplyAnnounceStep(report, phase_, added_reports_);
     return report;
   }
@@ -182,7 +182,7 @@ class UsbHotPlugPortal final : public giantrecomp::portal::PortalDevice {
     TryConnect();
   }
 
-  giantrecomp::portal::UsbPortal* current_ = nullptr;  // never freed when replaced, see file comment
+  giantsrecomp::portal::UsbPortal* current_ = nullptr;  // never freed when replaced, see file comment
   AnnouncePhase phase_ = AnnouncePhase::kForceEmpty;
   int added_reports_ = 0;
   std::chrono::steady_clock::time_point last_attempt_{};
@@ -190,15 +190,15 @@ class UsbHotPlugPortal final : public giantrecomp::portal::PortalDevice {
 
 // Builds a ready-to-use SoftwarePortal, wired the same way regardless of whether this is the
 // startup portal or a live switch back into software mode from the F4 menu.
-giantrecomp::portal::SoftwarePortal* SetUpSoftwarePortal() {
-  auto* software = new giantrecomp::portal::SoftwarePortal();  // intentionally never freed, see below
+giantsrecomp::portal::SoftwarePortal* SetUpSoftwarePortal() {
+  auto* software = new giantsrecomp::portal::SoftwarePortal();  // intentionally never freed, see below
   // The source path each slot's figure was loaded from (if any) is tracked by SoftwarePortal
   // itself, set atomically with the figure's data — see PlaceFigure's doc comment for why that
   // matters. This callback just saves whatever source it is handed.
-  software->SetWriteCallback([](int slot, const giantrecomp::portal::FigureData& data,
+  software->SetWriteCallback([](int slot, const giantsrecomp::portal::FigureData& data,
                                 const std::optional<std::filesystem::path>& source) {
     if (!source) return;  // this slot's figure did not come from a file
-    if (giantrecomp::portal::SaveFigureFileAtomic(*source, data)) {
+    if (giantsrecomp::portal::SaveFigureFileAtomic(*source, data)) {
       REXLOG_INFO("Portal: saved changes back to slot {}'s figure file", slot);
     } else {
       REXLOG_WARN("Portal: could not save changes back to slot {}'s figure file", slot);
@@ -225,21 +225,21 @@ giantrecomp::portal::SoftwarePortal* SetUpSoftwarePortal() {
 // On failure (unknown mode, or USB requested but not found), logs a warning and leaves whatever
 // was already active running, rather than dropping to no portal.
 void SwitchPortalMode(std::string_view mode_text) {
-  const auto mode = giantrecomp::portal::ParsePortalMode(mode_text);
+  const auto mode = giantsrecomp::portal::ParsePortalMode(mode_text);
   if (!mode) {
     REXLOG_WARN("Unknown portal_mode '{}'; leaving the current portal active (use 'software', "
                 "'usb', or 'none')",
                 mode_text);
     return;
   }
-  if (*mode == giantrecomp::portal::PortalMode::kNone) {
+  if (*mode == giantsrecomp::portal::PortalMode::kNone) {
     g_portal.store(nullptr);
     g_software_portal.store(nullptr);
     g_usb_portal.store(nullptr);
     REXLOG_INFO("Portal: none");
     return;
   }
-  if (*mode == giantrecomp::portal::PortalMode::kUsb) {
+  if (*mode == giantsrecomp::portal::PortalMode::kUsb) {
     // g_software_portal is null in this mode: it is a SoftwarePortal-only status handle (used by
     // GetSoftwarePortal() for the figure-picker overlay), and there is no software portal active.
     // Installed even if no device is found right now -- UsbHotPlugPortal keeps retrying on its
@@ -255,7 +255,7 @@ void SwitchPortalMode(std::string_view mode_text) {
     return;
   }
 
-  giantrecomp::portal::SoftwarePortal* software = SetUpSoftwarePortal();
+  giantsrecomp::portal::SoftwarePortal* software = SetUpSoftwarePortal();
   g_usb_portal.store(nullptr);
   g_software_portal.store(software);
   g_portal.store(new TransitioningPortal(software));  // never freed, see this function's comment
@@ -264,7 +264,7 @@ void SwitchPortalMode(std::string_view mode_text) {
 
 }  // namespace
 
-namespace giantrecomp {
+namespace giantsrecomp {
 
 void InstallConfiguredPortal(const std::filesystem::path& default_figures_dir) {
   if (REXCVAR_GET(portal_figures_dir).empty()) {
@@ -377,7 +377,7 @@ bool DumpRealFigureToFile(int slot, std::filesystem::path* saved_path, std::stri
   return true;
 }
 
-}  // namespace giantrecomp
+}  // namespace giantsrecomp
 
 // The game reads and writes its portal through two small recompiled wrappers (see
 // docs/architecture.md, "Hooking the game"; docs/portal-protocol.md). Replace them when a portal
@@ -387,7 +387,7 @@ REX_EXTERN(__imp__sub_82403BB8);  // read:  r3 = &bytes_read, r4 = &buffer_size,
 REX_EXTERN(__imp__sub_82403C28);  // write: r4 = frame buffer
 
 REX_HOOK_RAW(sub_82403BB8) {
-  using namespace giantrecomp::portal;
+  using namespace giantsrecomp::portal;
   PortalDevice* portal = g_portal.load();
   if (!portal) {
     __imp__sub_82403BB8(ctx, base);
@@ -419,7 +419,7 @@ REX_HOOK_RAW(sub_82403BB8) {
 }
 
 REX_HOOK_RAW(sub_82403C28) {
-  using namespace giantrecomp::portal;
+  using namespace giantsrecomp::portal;
   PortalDevice* portal = g_portal.load();
   if (!portal) {
     __imp__sub_82403C28(ctx, base);

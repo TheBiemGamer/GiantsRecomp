@@ -48,7 +48,7 @@ static int RunXexCheck(const fs::path& xexcheck_exe, const fs::path& target) {
 }
 
 int main() {
-  const fs::path xexcheck_exe = ExePath().parent_path() / "giantrecomp_xexcheck.exe";
+  const fs::path xexcheck_exe = ExePath().parent_path() / "giantsrecomp_xexcheck.exe";
   CHECK(fs::exists(xexcheck_exe));
 
   // Non-ASCII directory name: if argv narrows to the system code page (a plain `main(argc, char**

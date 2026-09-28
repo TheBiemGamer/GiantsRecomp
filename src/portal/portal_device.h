@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace giantrecomp::portal {
+namespace giantsrecomp::portal {
 
 // A raw portal report: what a portal sends and receives, with no console framing.
 constexpr size_t kReportSize = 32;
@@ -31,4 +31,4 @@ class PortalDevice {
   virtual Report Read() = 0;
 };
 
-}  // namespace giantrecomp::portal
+}  // namespace giantsrecomp::portal

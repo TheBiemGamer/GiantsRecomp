@@ -4,23 +4,23 @@
 #include <cstdio>
 #include <filesystem>
 
-#ifndef GIANTRECOMP_XEX_SHA256
-#error "GIANTRECOMP_XEX_SHA256 must be defined by the build (see CMakeLists.txt)"
+#ifndef GIANTSRECOMP_XEX_SHA256
+#error "GIANTSRECOMP_XEX_SHA256 must be defined by the build (see CMakeLists.txt)"
 #endif
 
 namespace {
 
 int RunCheck(const std::filesystem::path& xex) {
-  const auto result = giantrecomp::VerifyXex(xex, GIANTRECOMP_XEX_SHA256);
-  const auto problem = giantrecomp::DescribeXexProblem(xex, result, GIANTRECOMP_XEX_SHA256);
+  const auto result = giantsrecomp::VerifyXex(xex, GIANTSRECOMP_XEX_SHA256);
+  const auto problem = giantsrecomp::DescribeXexProblem(xex, result, GIANTSRECOMP_XEX_SHA256);
 
   if (problem.empty()) {
     std::puts("OK");
-    return giantrecomp::kExitMatch;
+    return giantsrecomp::kExitMatch;
   }
   std::fputs(problem.c_str(), stderr);
   std::fputc('\n', stderr);
-  return giantrecomp::ExitCodeForStatus(result.status);
+  return giantsrecomp::ExitCodeForStatus(result.status);
 }
 
 }  // namespace
@@ -34,8 +34,8 @@ int RunCheck(const std::filesystem::path& xex) {
 int wmain(int argc, wchar_t** argv) {
   if (argc != 2) {
     std::fwprintf(stderr, L"usage: %s <path-to-default.xex>\n",
-                  argc > 0 ? argv[0] : L"giantrecomp_xexcheck");
-    return giantrecomp::kExitBadExpected;
+                  argc > 0 ? argv[0] : L"giantsrecomp_xexcheck");
+    return giantsrecomp::kExitBadExpected;
   }
   return RunCheck(std::filesystem::path(argv[1]));
 }
@@ -45,8 +45,8 @@ int wmain(int argc, wchar_t** argv) {
 int main(int argc, char** argv) {
   if (argc != 2) {
     std::fprintf(stderr, "usage: %s <path-to-default.xex>\n",
-                 argc > 0 ? argv[0] : "giantrecomp_xexcheck");
-    return giantrecomp::kExitBadExpected;
+                 argc > 0 ? argv[0] : "giantsrecomp_xexcheck");
+    return giantsrecomp::kExitBadExpected;
   }
   return RunCheck(std::filesystem::path(argv[1]));
 }

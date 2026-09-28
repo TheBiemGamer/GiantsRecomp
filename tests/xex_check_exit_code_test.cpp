@@ -2,8 +2,8 @@
 
 #include <cstdio>
 
-using giantrecomp::ExitCodeForStatus;
-using giantrecomp::XexCheck;
+using giantsrecomp::ExitCodeForStatus;
+using giantsrecomp::XexCheck;
 
 static int g_failures = 0;
 #define CHECK(cond)                                                        \

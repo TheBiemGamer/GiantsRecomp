@@ -8,7 +8,7 @@
 #include "portal/figure_file.h"
 #include "portal/skylander_catalog_data.h"
 
-namespace giantrecomp::portal {
+namespace giantsrecomp::portal {
 
 std::span<const SkylanderInfo> AllSkylanders() { return kSkylanderCatalog; }
 
@@ -106,4 +106,4 @@ std::vector<FigureCatalogEntry> ScanFigureCatalog(const std::filesystem::path& r
   return entries;
 }
 
-}  // namespace giantrecomp::portal
+}  // namespace giantsrecomp::portal

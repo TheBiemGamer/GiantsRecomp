@@ -1,7 +1,7 @@
-// giantrecomp - ReXGlue Recompiled Project
+// giantsrecomp - ReXGlue Recompiled Project
 
-#include "generated/default/giantrecomp_init.h"
+#include "generated/default/giantsrecomp_init.h"
 
-#include "giantrecomp_app.h"
+#include "giantsrecomp_app.h"
 
-REX_DEFINE_APP(giantrecomp, GiantrecompApp::Create)
+REX_DEFINE_APP(giantsrecomp, GiantsrecompApp::Create)

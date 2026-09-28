@@ -4,7 +4,7 @@
 
 #include "portal/figure_catalog.h"
 
-namespace giantrecomp::portal {
+namespace giantsrecomp::portal {
 
 // Generated 2026-09-27.
 // Sorted by game release order (Spyro's Adventure -> Imaginators), then name.
@@ -659,4 +659,4 @@ inline constexpr std::array<SkylanderInfo, 648> kSkylanderCatalog = {{
     {614, 20480, "Wolfgang", "Imaginators"},
 }};
 
-}  // namespace giantrecomp::portal
+}  // namespace giantsrecomp::portal

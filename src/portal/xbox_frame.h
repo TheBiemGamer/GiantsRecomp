@@ -6,7 +6,7 @@
 
 #include "portal/portal_device.h"
 
-namespace giantrecomp::portal {
+namespace giantsrecomp::portal {
 
 // The Xbox 360 game exchanges 32-byte frames: the header 0B 14 followed by a 30-byte payload.
 constexpr size_t kFrameSize = 32;
@@ -21,4 +21,4 @@ std::optional<Report> ReportFromFrame(const uint8_t* frame);
 // Writes kFrameSize bytes to `frame`: the header, then the first kFramePayload bytes of `report`.
 void FrameFromReport(const Report& report, uint8_t* frame);
 
-}  // namespace giantrecomp::portal
+}  // namespace giantsrecomp::portal

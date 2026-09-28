@@ -3,7 +3,7 @@
 #include <cctype>
 #include <string>
 
-namespace giantrecomp::portal {
+namespace giantsrecomp::portal {
 
 std::optional<PortalMode> ParsePortalMode(std::string_view text) {
   size_t begin = 0;
@@ -20,4 +20,4 @@ std::optional<PortalMode> ParsePortalMode(std::string_view text) {
   return std::nullopt;
 }
 
-}  // namespace giantrecomp::portal
+}  // namespace giantsrecomp::portal

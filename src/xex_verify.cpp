@@ -6,7 +6,7 @@
 #include <fstream>
 #include <vector>
 
-namespace giantrecomp {
+namespace giantsrecomp {
 
 namespace {
 
@@ -78,4 +78,4 @@ std::string DescribeXexProblem(const std::filesystem::path& xex, const XexCheckR
   return "Internal error: the pinned SHA-256 is malformed.";
 }
 
-}  // namespace giantrecomp
+}  // namespace giantsrecomp

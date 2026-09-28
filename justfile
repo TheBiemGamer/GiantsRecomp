@@ -1,4 +1,4 @@
-# GiantRecomp dev tooling. Run `just` with no arguments to list every recipe.
+# GiantsRecomp dev tooling. Run `just` with no arguments to list every recipe.
 #
 # Needs: CMake, Ninja, `just`, and clang-20/clang++-20 on PATH.
 #   - Windows: Visual Studio 2022 with the "C++ Clang tools for Windows" component (its bundled
@@ -67,13 +67,13 @@ build-release:
 # after replacing rom/default.xex with a different dump -- see README.md's "For developers".
 regen-debug:
     if [ ! -f out/build/{{ triple }}-debug/build.ninja ]; then just configure-debug; fi
-    cmake --build --preset {{ triple }}-debug --target giantrecomp_codegen
+    cmake --build --preset {{ triple }}-debug --target giantsrecomp_codegen
     cmake --preset {{ triple }}-debug
     cmake --build --preset {{ triple }}-debug
 
 regen-release:
     if [ ! -f out/build/{{ triple }}-release/build.ninja ]; then just configure-release; fi
-    cmake --build --preset {{ triple }}-release --target giantrecomp_codegen
+    cmake --build --preset {{ triple }}-release --target giantsrecomp_codegen
     cmake --preset {{ triple }}-release
     cmake --build --preset {{ triple }}-release
 
@@ -83,12 +83,12 @@ regen-release:
 # args are passed straight to the game, e.g.:
 #   just play-debug --portal_mode usb
 play-debug *ARGS: build-debug
-    LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:{{ sdk_lib_dir }}" DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH:-}:{{ sdk_lib_dir }}" ./out/build/{{ triple }}-debug/giantrecomp{{ exe_suffix }} {{ ARGS }}
+    LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:{{ sdk_lib_dir }}" DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH:-}:{{ sdk_lib_dir }}" ./out/build/{{ triple }}-debug/giantsrecompiled{{ exe_suffix }} {{ ARGS }}
 
 # Build (only if needed) then run the release build -- smoother than debug, prefer this for
 # actually playing rather than debugging.
 play-release *ARGS: build-release
-    LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:{{ sdk_lib_dir }}" DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH:-}:{{ sdk_lib_dir }}" ./out/build/{{ triple }}-release/giantrecomp{{ exe_suffix }} {{ ARGS }}
+    LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:{{ sdk_lib_dir }}" DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH:-}:{{ sdk_lib_dir }}" ./out/build/{{ triple }}-release/giantsrecompiled{{ exe_suffix }} {{ ARGS }}
 
 # --- Package -------------------------------------------------------------------
 
@@ -99,14 +99,14 @@ play-release *ARGS: build-release
 # extracted disc) has to exist on the target machine too -- bring it over separately and drop it in
 # next to the packaged executable there.
 package-release: build-release
-    dist=dist/giantrecomp-{{ triple }}-release && \
+    dist=dist/giantsrecomp-{{ triple }}-release && \
     rm -rf "$dist" && \
     mkdir -p "$dist" && \
-    cp out/build/{{ triple }}-release/giantrecomp{{ exe_suffix }} "$dist/" && \
+    cp out/build/{{ triple }}-release/giantsrecompiled{{ exe_suffix }} "$dist/" && \
     for lib in out/build/{{ triple }}-release/*.dll out/build/{{ triple }}-release/*.so out/build/{{ triple }}-release/*.dylib {{ sdk_lib_dir }}/*.so {{ sdk_lib_dir }}/*.dylib; do [ -e "$lib" ] && cp "$lib" "$dist/"; done && \
     cp giantsrecomp.toml.example "$dist/giantsrecomp.toml" && \
     echo "Packaged to $dist/" && \
-    echo "Copy that folder to the other machine, then add your own rom/ next to giantrecomp{{ exe_suffix }} there" && \
+    echo "Copy that folder to the other machine, then add your own rom/ next to giantsrecompiled{{ exe_suffix }} there" && \
     echo "(rom/default.xex must exist) before running it."
 
 # Build the release binary, stage it alongside the installer's other inputs, and compile the
@@ -116,14 +116,14 @@ package-release: build-release
 package-installer: build-release
     rm -rf installer/staging && \
     mkdir -p installer/staging && \
-    cp out/build/win-amd64-release/giantrecomp.exe installer/staging/ && \
-    cp out/build/win-amd64-release/giantrecomp_xexcheck.exe installer/staging/ && \
+    cp out/build/win-amd64-release/giantsrecompiled.exe installer/staging/ && \
+    cp out/build/win-amd64-release/giantsrecomp_xexcheck.exe installer/staging/ && \
     for lib in out/build/win-amd64-release/*.dll; do [ -e "$lib" ] && cp "$lib" installer/staging/; done && \
     iscc="/c/Program Files (x86)/Inno Setup 6/ISCC.exe" && \
     [ -e "$iscc" ] || iscc="$USERPROFILE/AppData/Local/Programs/Inno Setup 6/ISCC.exe" && \
     [ -e "$iscc" ] || (echo "ISCC.exe not found -- install Inno Setup 6 (winget install JRSoftware.InnoSetup)" && exit 1) && \
-    "$iscc" installer/GiantRecomp.iss && \
-    echo "Installer built at installer/Output/GiantRecompSetup.exe"
+    "$iscc" installer/GiantsRecomp.iss && \
+    echo "Installer built at installer/Output/GiantsRecompSetup.exe"
 
 # --- Test ------------------------------------------------------------------
 

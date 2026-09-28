@@ -1,4 +1,4 @@
-// giantrecomp - ReXGlue Recompiled Project
+// giantsrecomp - ReXGlue Recompiled Project
 //
 // Customize your app by overriding virtual hooks from rex::ReXApp.
 
@@ -34,13 +34,13 @@ REXCVAR_DEFINE_DOUBLE(ui_scale, 1.0, "UI",
                      "screens where the default looks small.")
     .lifecycle(rex::cvar::Lifecycle::kInitOnly);
 
-class GiantrecompApp : public rex::ReXApp {
+class GiantsrecompApp : public rex::ReXApp {
  public:
   using rex::ReXApp::ReXApp;
 
   static std::unique_ptr<rex::ui::WindowedApp> Create(
       rex::ui::WindowedAppContext& ctx) {
-    return std::unique_ptr<GiantrecompApp>(new GiantrecompApp(ctx, "giantsrecomp",
+    return std::unique_ptr<GiantsrecompApp>(new GiantsrecompApp(ctx, "giantsrecomp",
         PPCImageConfig));
   }
 
@@ -57,11 +57,11 @@ class GiantrecompApp : public rex::ReXApp {
     if (config.gpu_plugin.empty()) config.gpu_plugin = "xenos";
     // Some of the game's text (e.g. the autosave warning dialog) is already resolved by the time
     // OnPostSetup runs -- apply this as early as possible, before the XEX even loads.
-    giantrecomp::ApplyLanguageSetting();
+    giantsrecomp::ApplyLanguageSetting();
   }
 
   void OnPostSetup() override {
-    giantrecomp::InstallConfiguredPortal(user_data_root() / "figures");
+    giantsrecomp::InstallConfiguredPortal(user_data_root() / "figures");
     // The F3 debug overlay's FPS line only shows once something calls this; nothing did, so it
     // silently stayed blank. Timed between successive calls (the overlay only calls this while
     // visible, once per rendered frame) rather than hooking a game-specific present function.
@@ -119,7 +119,7 @@ class GiantrecompApp : public rex::ReXApp {
                             if (portal_overlay_) {
                               portal_overlay_.reset();
                             } else {
-                              portal_overlay_ = std::make_unique<giantrecomp::PortalOverlayDialog>(drawer);
+                              portal_overlay_ = std::make_unique<giantsrecomp::PortalOverlayDialog>(drawer);
                             }
                           });
   }
@@ -140,9 +140,9 @@ class GiantrecompApp : public rex::ReXApp {
     const auto xex = game_data_root_ / "default.xex";
     // Utf8() and wide messages, not path::string(): that throws for characters outside the ANSI
     // code page, and this runs on every startup.
-    REXLOG_INFO("Checking {} against the pinned SHA-256", giantrecomp::Utf8(xex));
-    const auto result = giantrecomp::VerifyXex(xex, GIANTRECOMP_XEX_SHA256);
-    const auto problem = giantrecomp::DescribeXexProblem(xex, result, GIANTRECOMP_XEX_SHA256);
+    REXLOG_INFO("Checking {} against the pinned SHA-256", giantsrecomp::Utf8(xex));
+    const auto result = giantsrecomp::VerifyXex(xex, GIANTSRECOMP_XEX_SHA256);
+    const auto problem = giantsrecomp::DescribeXexProblem(xex, result, GIANTSRECOMP_XEX_SHA256);
     if (problem.empty()) {
       REXLOG_INFO("default.xex verified");
       return;
@@ -159,7 +159,7 @@ class GiantrecompApp : public rex::ReXApp {
     // own comment for why path::string() has the same trap in the other direction).
     const std::u8string u8(reinterpret_cast<const char8_t*>(message.data()), message.size());
     const auto wide = std::filesystem::path(u8).wstring();
-    MessageBoxW(nullptr, wide.c_str(), L"GiantRecomp", MB_OK | MB_ICONERROR);
+    MessageBoxW(nullptr, wide.c_str(), L"GiantsRecomp", MB_OK | MB_ICONERROR);
 #endif
     std::exit(2);
   }
@@ -192,7 +192,7 @@ class GiantrecompApp : public rex::ReXApp {
   }
 
   std::filesystem::path game_data_root_;
-  std::unique_ptr<giantrecomp::PortalOverlayDialog> portal_overlay_;
+  std::unique_ptr<giantsrecomp::PortalOverlayDialog> portal_overlay_;
   std::optional<std::chrono::steady_clock::time_point> last_frame_stats_time_;
   uint64_t frame_stats_count_ = 0;
   int fps_window_frames_ = 0;

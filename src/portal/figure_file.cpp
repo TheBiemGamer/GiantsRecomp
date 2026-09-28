@@ -5,7 +5,7 @@
 #include <string>
 #include <system_error>
 
-namespace giantrecomp::portal {
+namespace giantsrecomp::portal {
 
 std::optional<FigureData> LoadFigureFile(const std::filesystem::path& path) {
   std::error_code ec;
@@ -130,4 +130,4 @@ std::filesystem::path UniqueFigurePath(const std::filesystem::path& dir, std::st
   return candidate;
 }
 
-}  // namespace giantrecomp::portal
+}  // namespace giantsrecomp::portal

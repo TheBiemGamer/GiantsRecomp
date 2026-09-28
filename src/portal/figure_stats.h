@@ -6,7 +6,7 @@
 
 #include "portal/portal_device.h"
 
-namespace giantrecomp::portal {
+namespace giantsrecomp::portal {
 
 // A Skylander's in-game progress, decoded from its save-data bytes.
 struct FigureStats {
@@ -31,4 +31,4 @@ struct FigureStats {
 // Skylander::getXP(), which reads the same three bytes) -- exactly as trustworthy as gold.
 std::optional<FigureStats> ParseFigureStats(const FigureData& data);
 
-}  // namespace giantrecomp::portal
+}  // namespace giantsrecomp::portal

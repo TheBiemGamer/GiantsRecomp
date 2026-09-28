@@ -3,7 +3,7 @@
 #include "portal/xbox_frame.h"
 #include "test_util.h"
 
-using namespace giantrecomp::portal;
+using namespace giantsrecomp::portal;
 
 int main() {
   // A valid frame (0B 14 + payload) becomes a report with the payload at the front.

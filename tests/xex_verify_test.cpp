@@ -6,8 +6,8 @@
 #include <string>
 
 namespace fs = std::filesystem;
-using giantrecomp::VerifyXex;
-using giantrecomp::XexCheck;
+using giantsrecomp::VerifyXex;
+using giantsrecomp::XexCheck;
 
 static int g_failures = 0;
 #define CHECK(cond)                                                        \
@@ -30,15 +30,15 @@ static fs::path WriteTemp(const char* name, const std::string& bytes) {
 
 int main() {
   // Known SHA-256 vectors.
-  CHECK(giantrecomp::Sha256File(WriteTemp("gr_abc.bin", "abc")) == std::string(kAbc));
-  CHECK(giantrecomp::Sha256File(WriteTemp("gr_empty.bin", "")) == std::string(kEmpty));
+  CHECK(giantsrecomp::Sha256File(WriteTemp("gr_abc.bin", "abc")) == std::string(kAbc));
+  CHECK(giantsrecomp::Sha256File(WriteTemp("gr_empty.bin", "")) == std::string(kEmpty));
   // 1,000,000 bytes spans many read chunks.
-  CHECK(giantrecomp::Sha256File(WriteTemp("gr_million.bin", std::string(1000000, 'a'))) ==
+  CHECK(giantsrecomp::Sha256File(WriteTemp("gr_million.bin", std::string(1000000, 'a'))) ==
         std::string(kMillionA));
 
   // Unreadable inputs are nullopt, never a hash.
-  CHECK(!giantrecomp::Sha256File(fs::temp_directory_path() / "gr_does_not_exist.bin"));
-  CHECK(!giantrecomp::Sha256File(fs::temp_directory_path()));  // a directory
+  CHECK(!giantsrecomp::Sha256File(fs::temp_directory_path() / "gr_does_not_exist.bin"));
+  CHECK(!giantsrecomp::Sha256File(fs::temp_directory_path()));  // a directory
 
   // Paths with spaces and non-ASCII characters.
   fs::path odd = fs::temp_directory_path() / u8"gr odd éè dir";
@@ -46,7 +46,7 @@ int main() {
   {
     std::ofstream(odd / u8"défault.xex", std::ios::binary) << "abc";
   }
-  CHECK(giantrecomp::Sha256File(odd / u8"défault.xex") == std::string(kAbc));
+  CHECK(giantsrecomp::Sha256File(odd / u8"défault.xex") == std::string(kAbc));
 
   // VerifyXex: match, case and whitespace tolerant.
   fs::path abc = WriteTemp("gr_abc2.bin", "abc");
@@ -77,23 +77,23 @@ int main() {
     {
       std::ofstream(wide / L"default.xex", std::ios::binary) << "abc";
     }
-    CHECK(giantrecomp::Sha256File(wide / L"default.xex") == std::string(kAbc));
-    CHECK(giantrecomp::Utf8(fs::path(L"日")) == std::string("\xE6\x97\xA5"));
+    CHECK(giantsrecomp::Sha256File(wide / L"default.xex") == std::string(kAbc));
+    CHECK(giantsrecomp::Utf8(fs::path(L"日")) == std::string("\xE6\x97\xA5"));
 
     auto unreadable = VerifyXex(wide / L"missing.xex", kAbc);
-    std::string msg = giantrecomp::DescribeXexProblem(wide / L"missing.xex", unreadable, kAbc);
-    CHECK(msg.find(giantrecomp::Utf8(wide / L"missing.xex")) != std::string::npos);
+    std::string msg = giantsrecomp::DescribeXexProblem(wide / L"missing.xex", unreadable, kAbc);
+    CHECK(msg.find(giantsrecomp::Utf8(wide / L"missing.xex")) != std::string::npos);
     CHECK(msg.find("Cannot read") != std::string::npos);
   }
 
   // DescribeXexProblem: empty for a match; both hashes for a mismatch; a message for a bad pin.
   {
     fs::path f = WriteTemp("gr_desc.bin", "abc");
-    CHECK(giantrecomp::DescribeXexProblem(f, VerifyXex(f, kAbc), kAbc).empty());
-    std::string mm = giantrecomp::DescribeXexProblem(f, VerifyXex(f, kEmpty), kEmpty);
+    CHECK(giantsrecomp::DescribeXexProblem(f, VerifyXex(f, kAbc), kAbc).empty());
+    std::string mm = giantsrecomp::DescribeXexProblem(f, VerifyXex(f, kEmpty), kEmpty);
     CHECK(mm.find(std::string(kEmpty, kEmpty + 64)) != std::string::npos);
     CHECK(mm.find(std::string(kAbc, kAbc + 64)) != std::string::npos);
-    CHECK(!giantrecomp::DescribeXexProblem(f, VerifyXex(f, "xyz"), "xyz").empty());
+    CHECK(!giantsrecomp::DescribeXexProblem(f, VerifyXex(f, "xyz"), "xyz").empty());
   }
 
   if (g_failures == 0) std::puts("all xex_verify tests passed");

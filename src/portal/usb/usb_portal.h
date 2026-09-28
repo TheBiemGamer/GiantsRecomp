@@ -13,7 +13,7 @@
 
 #include "portal/portal_device.h"
 
-namespace giantrecomp::portal {
+namespace giantsrecomp::portal {
 
 // A small set of VID/PID pairs known to be a real Skylanders Portal of Power, matching Cemu's own
 // nsyshid whitelist for this device family (read for this fact only, not copied code).
@@ -118,4 +118,4 @@ class UsbPortal final : public PortalDevice {
   std::atomic<uint8_t> status_counter_{0};  // running counter for synthetic status frames
 };
 
-}  // namespace giantrecomp::portal
+}  // namespace giantsrecomp::portal

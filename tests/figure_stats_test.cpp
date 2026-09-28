@@ -2,7 +2,7 @@
 #include "portal/figure_stats.h"
 #include "test_util.h"
 
-using namespace giantrecomp::portal;
+using namespace giantsrecomp::portal;
 
 int main() {
   // A figure with no save data at all (e.g. --portal_test_figure) has nothing to report.
