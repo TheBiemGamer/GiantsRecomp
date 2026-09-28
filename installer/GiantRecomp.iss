@@ -40,6 +40,10 @@ var
   RomBrowseButton: TNewButton;
   RomStatusLabel: TNewStaticText;
   RomProgressBar: TNewProgressBar;
+  SettingsPage: TWizardPage;
+  PortalModeCombo: TNewComboBox;
+  ResolutionCombo: TNewComboBox;
+  ResolutionScaleEdit: TNewEdit;
 
 procedure RomBrowseButtonClick(Sender: TObject);
 var
@@ -162,6 +166,62 @@ begin
   Result := True;
 end;
 
+function PortalModeTomlValue: AnsiString;
+begin
+  case PortalModeCombo.ItemIndex of
+    1: Result := 'usb';
+    2: Result := 'none';
+  else
+    Result := 'software';
+  end;
+end;
+
+// Replaces every occurrence of FromStr in S with ToStr. Used instead of Inno's builtin
+// StringChangeEx: its exact parameter types didn't match what the plan assumed (a "Type mismatch"
+// compile error on the SupportEnvVars argument), so this avoids depending on a builtin whose exact
+// signature in this Inno version wasn't as documented.
+function ReplaceAll(const S, FromStr, ToStr: AnsiString): AnsiString;
+var
+  P: Integer;
+  Work: AnsiString;
+begin
+  Work := S;
+  P := Pos(FromStr, Work);
+  while P > 0 do begin
+    Delete(Work, P, Length(FromStr));
+    Insert(ToStr, Work, P);
+    P := Pos(FromStr, Work);
+  end;
+  Result := Work;
+end;
+
+// Writes {app}\giantsrecomp.toml from the vendored template, substituting the three wizard-chosen
+// values. Never overwrites an existing file: an update run (Task 7) relies on this exact check to
+// leave a previously-configured, possibly hand-edited toml untouched.
+procedure WriteSettingsFile;
+var
+  TemplatePath, DestPath: String;
+  Contents: AnsiString;
+  ResolutionScale: String;
+begin
+  DestPath := ExpandConstant('{app}') + '\giantsrecomp.toml';
+  if FileExists(DestPath) then Exit;
+
+  ExtractTemporaryFile('settings_template.toml');
+  TemplatePath := ExpandConstant('{tmp}') + '\settings_template.toml';
+  LoadStringFromFile(TemplatePath, Contents);
+
+  ResolutionScale := Trim(ResolutionScaleEdit.Text);
+  if (ResolutionScale = '') or (StrToIntDef(ResolutionScale, 0) < 1) then
+    ResolutionScale := '1';
+
+  Contents := ReplaceAll(Contents, '__PORTAL_MODE__', PortalModeTomlValue);
+  Contents := ReplaceAll(Contents, '__RESOLUTION__', ResolutionCombo.Items[ResolutionCombo.ItemIndex]);
+  Contents := ReplaceAll(Contents, '__RESOLUTION_SCALE__', ResolutionScale);
+
+  SaveStringToFile(DestPath, Contents, False);
+end;
+
 procedure InitializeWizard;
 begin
   RomPage := CreateCustomPage(wpSelectDir, 'Game Files',
@@ -207,6 +267,35 @@ begin
   RomProgressBar.Top := RomStatusLabel.Top + RomStatusLabel.Height + 8;
   RomProgressBar.Width := RomPage.SurfaceWidth;
   RomProgressBar.Visible := False;
+
+  SettingsPage := CreateCustomPage(RomPage.ID, 'Settings',
+    'Choose your Portal of Power and display settings (everything else can be changed later with F4 in-game)');
+
+  PortalModeCombo := TNewComboBox.Create(SettingsPage);
+  PortalModeCombo.Parent := SettingsPage.Surface;
+  PortalModeCombo.Style := csDropDownList;
+  PortalModeCombo.Items.Add('software (virtual Portal of Power)');
+  PortalModeCombo.Items.Add('usb (real Portal of Power over USB)');
+  PortalModeCombo.Items.Add('none (no portal)');
+  PortalModeCombo.ItemIndex := 0;
+  PortalModeCombo.Top := 0;
+  PortalModeCombo.Width := SettingsPage.SurfaceWidth;
+
+  ResolutionCombo := TNewComboBox.Create(SettingsPage);
+  ResolutionCombo.Parent := SettingsPage.Surface;
+  ResolutionCombo.Style := csDropDownList;
+  ResolutionCombo.Items.Add('1920x1080');
+  ResolutionCombo.Items.Add('2560x1440');
+  ResolutionCombo.Items.Add('3840x2160');
+  ResolutionCombo.ItemIndex := 0;
+  ResolutionCombo.Top := PortalModeCombo.Top + PortalModeCombo.Height + 16;
+  ResolutionCombo.Width := SettingsPage.SurfaceWidth;
+
+  ResolutionScaleEdit := TNewEdit.Create(SettingsPage);
+  ResolutionScaleEdit.Parent := SettingsPage.Surface;
+  ResolutionScaleEdit.Text := '1';
+  ResolutionScaleEdit.Top := ResolutionCombo.Top + ResolutionCombo.Height + 16;
+  ResolutionScaleEdit.Width := 60;
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
@@ -215,6 +304,12 @@ var
   FreeMB: Int64;
 begin
   Result := True;
+
+  if CurPageID = SettingsPage.ID then begin
+    WriteSettingsFile;
+    Exit;
+  end;
+
   if CurPageID <> RomPage.ID then Exit;
 
   if Trim(RomPathEdit.Text) = '' then begin
