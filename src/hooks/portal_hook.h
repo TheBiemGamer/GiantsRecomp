@@ -56,9 +56,20 @@ portal::SoftwarePortal* GetSoftwarePortal();
 // overlay. nullptr if portal_mode is not "usb" or no device was found.
 portal::UsbPortal* GetUsbPortal();
 
-// Reads a real figure's full data directly from the portal, independent of the game's own
-// polling. Returns nullopt if there's no active USB portal, no figure in `slot`, or the read
-// fails.
+// Best-effort figure data for a real figure in `slot`, assembled passively from whatever the
+// game's own portal polling has already read (see UsbPortal::CachedFigureData) -- never an
+// active read, cheap enough to call every frame. Returns nullopt if there's no active USB
+// portal, no figure in `slot`, or not enough of it has been observed yet.
 std::optional<portal::FigureData> ReadRealFigureBlocks(int slot);
+
+// Dumps the real figure in `slot` (see UsbPortal::DumpFigure -- the game briefly sees that slot
+// as empty while this runs) and saves it under portal_figures_dir, grouped by game and named
+// like CreateAndPlaceFigure's own figures ("<name>.dump", " (2).dump" on collision; an
+// unrecognized id/variant falls back to "Unknown id<N> variant<N>" at the folder root). On
+// success, `saved_path` (if given) is set to where it was written. Returns false -- with a
+// reason in `error`, if given -- if there's no active USB portal, portal_figures_dir is unset,
+// the dump itself fails, or the file can't be saved.
+bool DumpRealFigureToFile(int slot, std::filesystem::path* saved_path = nullptr,
+                          std::string* error = nullptr);
 
 }  // namespace giantrecomp

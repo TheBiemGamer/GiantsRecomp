@@ -1,8 +1,8 @@
 #pragma once
 
+#include <filesystem>
 #include <optional>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include <rex/ui/imgui_dialog.h>
@@ -31,15 +31,19 @@ class PortalOverlayDialog : public rex::ui::ImGuiDialog {
 
  private:
   void Rescan();
-  void RefreshRealFigureStats();
+  // Cheap: stats a file's mtime and only re-decodes entries whose file actually changed since the
+  // last check (e.g. the game just saved progress back to it) -- called every frame the Browse
+  // tab is visible, unlike Rescan() itself (which re-lists the directory).
+  void RefreshChangedFigureStats();
 
   std::vector<portal::FigureCatalogEntry> entries_;
   std::vector<std::optional<portal::FigureStats>> entry_stats_;  // parallel to entries_
+  std::vector<std::filesystem::file_time_type> entry_mtimes_;    // parallel to entries_
   std::string figures_dir_at_last_scan_;
   char filter_[128] = {};
   int selected_slot_ = 0;  // which slot Place/Remove act on
   bool creating_ = false;  // false: Browse tab: true: New Figure tab
-  std::unordered_map<int, portal::FigureStats> real_figure_stats_;  // slot -> decoded stats
+  std::string usb_dump_message_;  // result of the last "Dump to file" click, shown until the next one
 };
 
 }  // namespace giantrecomp

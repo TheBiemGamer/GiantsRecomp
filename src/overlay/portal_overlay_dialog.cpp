@@ -46,9 +46,6 @@ std::string SlotLabel(portal::SoftwarePortal* software, int slot) {
 
 PortalOverlayDialog::PortalOverlayDialog(rex::ui::ImGuiDrawer* drawer) : ImGuiDialog(drawer) {
   Rescan();
-  // Not called automatically here: a real USB read briefly blocks the game's own polling
-  // (UsbPortal::ReadAllBlocks holds a mutex shared with the game's hook thread), so it only runs
-  // on an explicit user action (the Refresh button below), never just from opening the dialog.
 }
 
 void PortalOverlayDialog::Rescan() {
@@ -58,24 +55,28 @@ void PortalOverlayDialog::Rescan() {
                  : portal::ScanFigureCatalog(Utf8ToPath(figures_dir_at_last_scan_));
   entry_stats_.clear();
   entry_stats_.reserve(entries_.size());
+  entry_mtimes_.clear();
+  entry_mtimes_.reserve(entries_.size());
   for (const auto& entry : entries_) {
     std::optional<portal::FigureStats> stats;
     if (auto data = portal::LoadFigureFile(entry.path)) {
       stats = portal::ParseFigureStats(*data);
     }
     entry_stats_.push_back(stats);
+    std::error_code ec;
+    entry_mtimes_.push_back(std::filesystem::last_write_time(entry.path, ec));
   }
 }
 
-void PortalOverlayDialog::RefreshRealFigureStats() {
-  real_figure_stats_.clear();
-  portal::UsbPortal* usb = GetUsbPortal();
-  if (!usb) return;
-  for (int slot : usb->PresentSlots()) {
-    if (auto blocks = ReadRealFigureBlocks(slot)) {
-      if (auto stats = portal::ParseFigureStats(*blocks)) {
-        real_figure_stats_[slot] = *stats;
-      }
+void PortalOverlayDialog::RefreshChangedFigureStats() {
+  for (size_t i = 0; i < entries_.size(); ++i) {
+    std::error_code ec;
+    const auto mtime = std::filesystem::last_write_time(entries_[i].path, ec);
+    if (ec || mtime == entry_mtimes_[i]) continue;
+    entry_mtimes_[i] = mtime;
+    entry_stats_[i] = std::nullopt;
+    if (auto data = portal::LoadFigureFile(entries_[i].path)) {
+      entry_stats_[i] = portal::ParseFigureStats(*data);
     }
   }
 }
@@ -94,8 +95,6 @@ void PortalOverlayDialog::OnDraw(ImGuiIO& io) {
       ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f),
                          "A read or write error occurred -- see the log for details.");
     }
-    ImGui::Separator();
-    if (ImGui::Button("Refresh")) RefreshRealFigureStats();
     ImGui::Separator();
     const std::vector<int> present_slots = usb->PresentSlots();
     if (present_slots.empty()) {
@@ -116,12 +115,41 @@ void PortalOverlayDialog::OnDraw(ImGuiIO& io) {
         } else {
           ImGui::Text("Slot %d: figure detected, identity not read yet", slot);
         }
-        if (auto it = real_figure_stats_.find(slot); it != real_figure_stats_.end()) {
-          ImGui::Text("  Level %u, %u gold, \"%s\"", static_cast<unsigned>(it->second.level),
-                      static_cast<unsigned>(it->second.gold), it->second.nickname.c_str());
+        std::optional<portal::FigureStats> stats;
+        if (auto blocks = ReadRealFigureBlocks(slot)) stats = portal::ParseFigureStats(*blocks);
+        if (stats) {
+          if (stats->nickname.empty()) {
+            ImGui::Text("  Level %u, %u gold", static_cast<unsigned>(stats->level),
+                        static_cast<unsigned>(stats->gold));
+          } else {
+            ImGui::Text("  Level %u, %u gold (\"%s\")", static_cast<unsigned>(stats->level),
+                        static_cast<unsigned>(stats->gold), stats->nickname.c_str());
+          }
         } else {
-          ImGui::TextDisabled("  (press Refresh to read level/gold/nickname)");
+          ImGui::TextDisabled("  (level/gold/nickname not read yet)");
         }
+        ImGui::PushID(slot);
+        if (ImGui::Button("Dump to file")) {
+          std::filesystem::path saved;
+          std::string err;
+          if (DumpRealFigureToFile(slot, &saved, &err)) {
+            usb_dump_message_ = "Saved: " + Utf8(saved);
+          } else {
+            usb_dump_message_ = "Dump failed: " + err;
+          }
+        }
+        if (ImGui::IsItemHovered()) {
+          ImGui::SetTooltip(
+              "Reads this figure's full data and saves it as a .dump file under your figures "
+              "folder. Briefly disconnects this slot from the game -- it will look like the "
+              "figure was taken off the portal while this runs, then look like it was put back. "
+              "Nothing changes on the physical toy.");
+        }
+        ImGui::PopID();
+      }
+      if (!usb_dump_message_.empty()) {
+        ImGui::Separator();
+        ImGui::TextWrapped("%s", usb_dump_message_.c_str());
       }
     }
     ImGui::End();
@@ -129,8 +157,8 @@ void PortalOverlayDialog::OnDraw(ImGuiIO& io) {
   }
   if (portal::ParsePortalMode(REXCVAR_GET(portal_mode)) == portal::PortalMode::kUsb) {
     ImGui::TextWrapped(
-        "portal_mode is 'usb' but no USB portal was found at startup. Plug it in and restart the "
-        "game -- hot-plug isn't supported yet.");
+        "portal_mode is 'usb' but no USB portal is currently connected. Plug it in -- it's "
+        "detected automatically, no restart needed.");
     ImGui::End();
     return;
   }
@@ -204,6 +232,7 @@ void PortalOverlayDialog::OnDraw(ImGuiIO& io) {
     return;
   }
   if (current_dir != figures_dir_at_last_scan_) Rescan();  // the cvar can change via the console
+  RefreshChangedFigureStats();  // cheap mtime check, catches e.g. the game saving progress back
 
   ImGui::InputTextWithHint("Filter", "figure name", filter_, sizeof(filter_));
   ImGui::SameLine();
@@ -242,8 +271,14 @@ void PortalOverlayDialog::OnDraw(ImGuiIO& io) {
     ImGui::TextUnformatted(entry.display_name.c_str());
     if (entry_stats_[i]) {
       ImGui::SameLine();
-      ImGui::TextDisabled("(Lv %u, %u gold)", static_cast<unsigned>(entry_stats_[i]->level),
-                          static_cast<unsigned>(entry_stats_[i]->gold));
+      if (entry_stats_[i]->nickname.empty()) {
+        ImGui::TextDisabled("(Lv %u, %u gold)", static_cast<unsigned>(entry_stats_[i]->level),
+                            static_cast<unsigned>(entry_stats_[i]->gold));
+      } else {
+        ImGui::TextDisabled("(Lv %u, %u gold, \"%s\")", static_cast<unsigned>(entry_stats_[i]->level),
+                            static_cast<unsigned>(entry_stats_[i]->gold),
+                            entry_stats_[i]->nickname.c_str());
+      }
     }
     ImGui::SameLine(ImGui::GetWindowWidth() - 80);
     if (ImGui::Button("Place")) {

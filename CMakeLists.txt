@@ -3,7 +3,7 @@
 # SDK boilerplate lives in generated/rexglue.cmake.
 
 cmake_minimum_required(VERSION 3.25)
-project(giantrecomp LANGUAGES CXX)
+project(giantrecomp LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -112,6 +112,20 @@ add_library(giantrecomp_portal STATIC
 )
 target_include_directories(giantrecomp_portal PUBLIC src)
 target_compile_features(giantrecomp_portal PUBLIC cxx_std_23)
+# figure_stats.cpp decrypts figure save data (AES-128 + MD5, see its own comments) using the
+# SDK's already-vendored, standalone implementations -- same reasoning as giantrecomp_verify's
+# vendored SHA-256 above: no ReXGlue dependency needed for either.
+if(NOT REXSDK_DIR)
+    message(FATAL_ERROR "REXSDK_DIR must be set (giantrecomp_portal needs its vendored AES-128/MD5 implementations)")
+endif()
+target_include_directories(giantrecomp_portal PRIVATE
+    "${REXSDK_DIR}/thirdparty/aes_128"
+    "${REXSDK_DIR}/thirdparty/libmspack/cabextract"
+)
+target_sources(giantrecomp_portal PRIVATE
+    "${REXSDK_DIR}/thirdparty/aes_128/aes.c"
+    "${REXSDK_DIR}/thirdparty/libmspack/cabextract/md5.c"
+)
 
 foreach(portal_test portal_framing_test portal_mode_test software_portal_test figure_file_test figure_catalog_test figure_stats_test)
     add_executable(${portal_test} tests/${portal_test}.cpp)

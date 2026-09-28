@@ -1,10 +1,12 @@
 #include "hooks/portal_hook.h"
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <string_view>
 
 #include <rex/cvar.h>
 #include <rex/hook.h>
@@ -19,7 +21,8 @@
 
 REXCVAR_DEFINE_STRING(portal_mode, "software", "Portal",
                       "Portal backend: 'software', 'usb' (a real, physical Portal of Power over "
-                      "USB -- no driver changes needed), or 'none'");
+                      "USB -- no driver changes needed), or 'none'")
+    .allowed({"software", "usb", "none"});
 REXCVAR_DEFINE_BOOL(portal_test_figure, false, "Portal",
                     "Development: put an all-zero figure on the portal (the game reports it as a "
                     "problem toy)");
@@ -61,53 +64,141 @@ std::string HexBytes(const uint8_t* data, size_t n) {
   return out;
 }
 
-}  // namespace
+// Status-report announce dance shared by TransitioningPortal and UsbHotPlugPortal below: mirrors
+// SoftwarePortal's own activate/deactivate announce dance (software_portal.cpp: kAddedReports) --
+// one fully-empty report, then up to kAddedReports reports with any present slot forced to
+// "added" (0b11) instead of "present" (0b01), so the game re-announces (and reloads) it rather
+// than silently continuing to show whatever it believed was there. No-ops on non-status reports.
+constexpr int kAnnounceAddedReports = 8;  // matches SoftwarePortal's own kAddedReports
+enum class AnnouncePhase { kForceEmpty, kForceAdded, kDone };
 
-namespace giantrecomp {
+void ForceStatusEmpty(giantrecomp::portal::Report& report) {
+  for (int i = 1; i <= 4; ++i) report[i] = 0;
+}
 
-void InstallConfiguredPortal(const std::filesystem::path& default_figures_dir) {
-  if (REXCVAR_GET(portal_figures_dir).empty()) {
-    std::error_code ec;
-    std::filesystem::create_directories(default_figures_dir, ec);
-    const auto u8 = default_figures_dir.u8string();
-    REXCVAR_SET(portal_figures_dir, std::string(reinterpret_cast<const char*>(u8.data()), u8.size()));
-  }
-
-  const std::string text = REXCVAR_GET(portal_mode);
-  const auto mode = portal::ParsePortalMode(text);
-  if (!mode) {
-    REXLOG_WARN("Unknown portal_mode '{}'; running with no portal (use 'software' or 'none')", text);
-    return;
-  }
-  if (*mode == portal::PortalMode::kNone) {
-    REXLOG_INFO("Portal: none");
-    return;
-  }
-  if (*mode == portal::PortalMode::kUsb) {
-    auto* usb = new portal::UsbPortal();  // intentionally never freed, matching the software path
-    if (!usb->IsOpen()) {
-      REXLOG_WARN("Portal: no USB portal found (checked known Skylanders portal VID/PIDs); "
-                  "running with no portal");
-      delete usb;
-      return;
+void ForceStatusPresentToAdded(giantrecomp::portal::Report& report) {
+  for (int byte = 1; byte <= 4; ++byte) {
+    uint8_t out = 0;
+    for (int pair = 0; pair < 4; ++pair) {
+      const int shift = pair * 2;
+      const uint8_t state = (report[byte] >> shift) & 0x03;
+      out |= static_cast<uint8_t>((state == 0x01 ? 0x03 : state) << shift);
     }
-    // g_software_portal is intentionally left null here: it is a SoftwarePortal-only status
-    // handle (used by GetSoftwarePortal() for the figure-picker overlay), and there is no
-    // software portal active in this mode.
-    g_portal.store(usb);
-    g_usb_portal.store(usb);
-    REXLOG_INFO("Portal: usb");
+    report[byte] = out;
+  }
+}
+
+// Advances `phase`/`added_reports` and applies the announce transform to `report` in place.
+// Callers own their own phase/counter pair, since TransitioningPortal only ever runs this once
+// while UsbHotPlugPortal resets and re-runs it on every reconnect.
+void ApplyAnnounceStep(giantrecomp::portal::Report& report, AnnouncePhase& phase,
+                       int& added_reports) {
+  if (report[0] != 0x53 || phase == AnnouncePhase::kDone) return;
+  if (phase == AnnouncePhase::kForceEmpty) {
+    ForceStatusEmpty(report);
+    phase = AnnouncePhase::kForceAdded;
     return;
   }
+  ForceStatusPresentToAdded(report);
+  if (++added_reports >= kAnnounceAddedReports) phase = AnnouncePhase::kDone;
+}
 
-  auto* software = new portal::SoftwarePortal();  // intentionally never freed, see the header
+// Wraps a freshly-installed PortalDevice for the first few status reports after a portal switch
+// (see ApplyAnnounceStep above), then permanent, untouched passthrough. Used for the software
+// side of a live switch -- SoftwarePortal doesn't need hot-plug recovery, just the announce.
+class TransitioningPortal final : public giantrecomp::portal::PortalDevice {
+ public:
+  explicit TransitioningPortal(giantrecomp::portal::PortalDevice* real) : real_(real) {}
+
+  void Write(const giantrecomp::portal::Report& report) override { real_->Write(report); }
+
+  giantrecomp::portal::Report Read() override {
+    giantrecomp::portal::Report report = real_->Read();
+    ApplyAnnounceStep(report, phase_, added_reports_);
+    return report;
+  }
+
+ private:
+  giantrecomp::portal::PortalDevice* real_;
+  AnnouncePhase phase_ = AnnouncePhase::kForceEmpty;
+  int added_reports_ = 0;
+};
+
+// Builds a ready-to-use UsbPortal, or nullptr if no matching device is connected. Never stored
+// anywhere itself -- callers decide whether to publish it (SwitchPortalMode) or discard it.
+giantrecomp::portal::UsbPortal* SetUpUsbPortal() {
+  auto* usb = new giantrecomp::portal::UsbPortal();  // never freed if published, see below
+  if (usb->IsOpen()) return usb;
+  delete usb;  // never published anywhere, so nothing else could have seen this one -- safe to free
+  return nullptr;
+}
+
+// The USB side of a live switch: on top of the same announce dance TransitioningPortal does, this
+// one also owns hot-plug recovery. A device that was never found yet (portal_mode set to "usb"
+// before anything was plugged in) and a device that was working and got unplugged look the same
+// here: "not currently connected, keep retrying." Retries are rate-limited and driven entirely by
+// the game's own continuous Read()/Write() polling -- no new thread. A successful (re)connect
+// re-runs the announce dance so the game picks up whatever figure is now on the portal instead of
+// showing stale state. Never publishes a UsbPortal that failed to open (SetUpUsbPortal already
+// frees those), so g_usb_portal only ever points at a real, currently-connected device or null.
+class UsbHotPlugPortal final : public giantrecomp::portal::PortalDevice {
+ public:
+  UsbHotPlugPortal() { TryConnect(); }
+
+  void Write(const giantrecomp::portal::Report& report) override {
+    MaybeReconnect();
+    if (current_) current_->Write(report);
+  }
+
+  giantrecomp::portal::Report Read() override {
+    MaybeReconnect();
+    giantrecomp::portal::Report report =
+        current_ ? current_->Read() : giantrecomp::portal::Report{};
+    ApplyAnnounceStep(report, phase_, added_reports_);
+    return report;
+  }
+
+ private:
+  void TryConnect() {
+    current_ = SetUpUsbPortal();
+    g_usb_portal.store(current_);
+    if (current_) {
+      phase_ = AnnouncePhase::kForceEmpty;
+      added_reports_ = 0;
+      REXLOG_INFO("Portal: usb device connected");
+    }
+  }
+
+  void MaybeReconnect() {
+    if (current_ && !current_->SeemsDisconnected()) return;
+    if (current_) {
+      REXLOG_WARN("Portal: usb device appears to have been disconnected; will keep retrying");
+      current_ = nullptr;
+      g_usb_portal.store(nullptr);
+    }
+    const auto now = std::chrono::steady_clock::now();
+    if (now - last_attempt_ < std::chrono::seconds(1)) return;  // rate-limit hid_open attempts
+    last_attempt_ = now;
+    TryConnect();
+  }
+
+  giantrecomp::portal::UsbPortal* current_ = nullptr;  // never freed when replaced, see file comment
+  AnnouncePhase phase_ = AnnouncePhase::kForceEmpty;
+  int added_reports_ = 0;
+  std::chrono::steady_clock::time_point last_attempt_{};
+};
+
+// Builds a ready-to-use SoftwarePortal, wired the same way regardless of whether this is the
+// startup portal or a live switch back into software mode from the F4 menu.
+giantrecomp::portal::SoftwarePortal* SetUpSoftwarePortal() {
+  auto* software = new giantrecomp::portal::SoftwarePortal();  // intentionally never freed, see below
   // The source path each slot's figure was loaded from (if any) is tracked by SoftwarePortal
   // itself, set atomically with the figure's data — see PlaceFigure's doc comment for why that
   // matters. This callback just saves whatever source it is handed.
-  software->SetWriteCallback([](int slot, const portal::FigureData& data,
+  software->SetWriteCallback([](int slot, const giantrecomp::portal::FigureData& data,
                                 const std::optional<std::filesystem::path>& source) {
     if (!source) return;  // this slot's figure did not come from a file
-    if (portal::SaveFigureFileAtomic(*source, data)) {
+    if (giantrecomp::portal::SaveFigureFileAtomic(*source, data)) {
       REXLOG_INFO("Portal: saved changes back to slot {}'s figure file", slot);
     } else {
       REXLOG_WARN("Portal: could not save changes back to slot {}'s figure file", slot);
@@ -121,25 +212,92 @@ void InstallConfiguredPortal(const std::filesystem::path& default_figures_dir) {
     REXLOG_TRACE("Portal figure research: software slot {} block {} {} -> {}", slot, block, op,
                 HexBytes(data, n));
   });
+  return software;
+}
 
-  // Publish the portal before placing the startup figure: InstallConfiguredPortal runs on the
-  // app's setup thread, before any guest thread exists to call the hooks, so this ordering cannot
-  // race with a hook call.
-  g_software_portal.store(software);
-  g_portal.store(software);
-
-  const std::string figure_path = REXCVAR_GET(portal_figure);
-  if (!figure_path.empty()) {
-    if (!PlaceFigureFromFile(0, Utf8ToPath(figure_path))) {
-      REXLOG_WARN("Portal: cannot load '{}' (it must be a regular file of exactly {} bytes); "
-                  "running with an empty portal",
-                  figure_path, portal::kFigureSize);
-    }
-  } else if (REXCVAR_GET(portal_test_figure)) {
-    software->PlaceFigure(0, portal::FigureData{});
-    REXLOG_WARN("Portal: placed an all-zero test figure in slot 0");
+// Switches the active portal to `mode`, live -- called both once at startup and again every time
+// the portal_mode cvar changes afterward (e.g. from the F4 Settings overlay). The previous
+// PortalDevice, if any, is never freed: the game's hook thread reads g_portal via a fresh
+// .load() on every single call rather than caching it (see the REX_HOOK_RAW functions below), so
+// swapping which pointer it sees is already safe, but deleting the old object out from under a
+// hook call that might still be mid-flight on it would not be -- the same reasoning that already
+// kept every portal alive for the whole process before this function could ever be called twice.
+// On failure (unknown mode, or USB requested but not found), logs a warning and leaves whatever
+// was already active running, rather than dropping to no portal.
+void SwitchPortalMode(std::string_view mode_text) {
+  const auto mode = giantrecomp::portal::ParsePortalMode(mode_text);
+  if (!mode) {
+    REXLOG_WARN("Unknown portal_mode '{}'; leaving the current portal active (use 'software', "
+                "'usb', or 'none')",
+                mode_text);
+    return;
   }
+  if (*mode == giantrecomp::portal::PortalMode::kNone) {
+    g_portal.store(nullptr);
+    g_software_portal.store(nullptr);
+    g_usb_portal.store(nullptr);
+    REXLOG_INFO("Portal: none");
+    return;
+  }
+  if (*mode == giantrecomp::portal::PortalMode::kUsb) {
+    // g_software_portal is null in this mode: it is a SoftwarePortal-only status handle (used by
+    // GetSoftwarePortal() for the figure-picker overlay), and there is no software portal active.
+    // Installed even if no device is found right now -- UsbHotPlugPortal keeps retrying on its
+    // own (checked known Skylanders portal VID/PIDs), including for a device plugged in later;
+    // it maintains g_usb_portal itself, pointing at a real connected device or null, never a
+    // failed/abandoned one. REXLOG_WARN("no USB portal found") intentionally isn't logged here
+    // the way the old one-shot version of this branch did -- UsbHotPlugPortal would repeat that
+    // warning every retry (once a second) while nothing is plugged in, which is not a real
+    // problem worth spamming the log over.
+    g_software_portal.store(nullptr);
+    g_portal.store(new UsbHotPlugPortal());  // never freed, see this function's comment
+    REXLOG_INFO("Portal: usb");
+    return;
+  }
+
+  giantrecomp::portal::SoftwarePortal* software = SetUpSoftwarePortal();
+  g_usb_portal.store(nullptr);
+  g_software_portal.store(software);
+  g_portal.store(new TransitioningPortal(software));  // never freed, see this function's comment
   REXLOG_INFO("Portal: software");
+}
+
+}  // namespace
+
+namespace giantrecomp {
+
+void InstallConfiguredPortal(const std::filesystem::path& default_figures_dir) {
+  if (REXCVAR_GET(portal_figures_dir).empty()) {
+    std::error_code ec;
+    std::filesystem::create_directories(default_figures_dir, ec);
+    const auto u8 = default_figures_dir.u8string();
+    REXCVAR_SET(portal_figures_dir, std::string(reinterpret_cast<const char*>(u8.data()), u8.size()));
+  }
+
+  SwitchPortalMode(REXCVAR_GET(portal_mode));
+
+  // The startup-only --portal_figure/--portal_test_figure flags only make sense once, for the
+  // portal this process actually boots into -- a later live switch back to software mode starts
+  // empty, same as if you'd launched straight into it (see docs/architecture.md, "Figures").
+  if (portal::SoftwarePortal* software = g_software_portal.load()) {
+    const std::string figure_path = REXCVAR_GET(portal_figure);
+    if (!figure_path.empty()) {
+      if (!PlaceFigureFromFile(0, Utf8ToPath(figure_path))) {
+        REXLOG_WARN("Portal: cannot load '{}' (it must be a regular file of exactly {} bytes); "
+                    "running with an empty portal",
+                    figure_path, portal::kFigureSize);
+      }
+    } else if (REXCVAR_GET(portal_test_figure)) {
+      software->PlaceFigure(0, portal::FigureData{});
+      REXLOG_WARN("Portal: placed an all-zero test figure in slot 0");
+    }
+  }
+
+  // Live-switch: whenever portal_mode changes after startup (e.g. from the F4 Settings overlay),
+  // swap the active portal the same way. Registered once, here, at process lifetime -- never
+  // unregistered, matching this project's existing "portal lives for the whole process" pattern.
+  rex::cvar::RegisterChangeCallback(
+      "portal_mode", [](std::string_view, std::string_view new_value) { SwitchPortalMode(new_value); });
 }
 
 bool PlaceFigureFromFile(int slot, const std::filesystem::path& path) {
@@ -180,7 +338,43 @@ portal::UsbPortal* GetUsbPortal() { return g_usb_portal.load(); }
 std::optional<portal::FigureData> ReadRealFigureBlocks(int slot) {
   portal::UsbPortal* usb = g_usb_portal.load();
   if (!usb) return std::nullopt;
-  return usb->ReadAllBlocks(slot);
+  return usb->CachedFigureData(slot);
+}
+
+bool DumpRealFigureToFile(int slot, std::filesystem::path* saved_path, std::string* error) {
+  auto Fail = [&](std::string_view msg) {
+    if (error) *error = std::string(msg);
+    return false;
+  };
+
+  portal::UsbPortal* usb = g_usb_portal.load();
+  if (!usb) return Fail("no active USB portal");
+
+  const std::string dir_utf8 = REXCVAR_GET(portal_figures_dir);
+  if (dir_utf8.empty()) return Fail("no figures folder set (portal_figures_dir)");
+
+  std::string dump_error;
+  auto data = usb->DumpFigure(slot, &dump_error);
+  if (!data) return Fail(dump_error);
+
+  const uint16_t id = portal::ReadFigureId(*data);
+  const uint16_t variant = portal::ReadFigureVariant(*data);
+  const auto* sky = portal::FindSkylander(id, variant);
+  const std::string game = sky ? std::string(sky->game) : std::string();
+  const std::string name =
+      sky ? std::string(sky->name)
+          : "Unknown id" + std::to_string(id) + " variant" + std::to_string(variant);
+
+  const std::filesystem::path dir = game.empty() ? Utf8ToPath(dir_utf8) : Utf8ToPath(dir_utf8) / game;
+  std::error_code ec;
+  std::filesystem::create_directories(dir, ec);
+  if (ec) return Fail("could not create the figures folder");
+
+  const std::filesystem::path path = portal::UniqueFigurePath(dir, name);
+  if (!portal::SaveFigureFileAtomic(path, *data)) return Fail("could not save the dump file");
+
+  if (saved_path) *saved_path = path;
+  return true;
 }
 
 }  // namespace giantrecomp
