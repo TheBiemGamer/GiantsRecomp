@@ -15,23 +15,13 @@ if(NOT REXSDK_DIR AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/rexglue-sdk
         "Path to the rexglue-sdk source tree" FORCE)
 endif()
 
-# hidapi provides USB HID access for the real portal backend (portal_mode = "usb"). Its own
-# CMakeLists picks the right per-OS backend automatically -- on Windows this is the native HID
-# API, not libusb, so no WinUSB/Zadig driver replacement is needed. Commands go out via
-# hid_send_output_report() (a HID SET_REPORT control transfer), not hid_write() -- see
-# UsbPortal::Write and docs/portal-protocol.md for why that distinction matters.
-if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/hidapi/CMakeLists.txt")
-    message(FATAL_ERROR "thirdparty/hidapi is missing. Run: git submodule update --init --recursive")
-endif()
-set(HIDAPI_WITH_TESTS OFF CACHE BOOL "" FORCE)
-# Force static explicitly: this runs before generated/rexglue.cmake pulls in the SDK's own
-# thirdparty/CMakeLists.txt, which is what normally forces BUILD_SHARED_LIBS off project-wide. On
-# a first configure (empty cache) that ordering means hidapi's own default (ON) wins and it builds
-# as a DLL -- an extra runtime dependency nobody using portal_mode other than "usb" asked for.
-set(BUILD_SHARED_LIBS OFF)
-add_subdirectory(thirdparty/hidapi)
-
 include(generated/rexglue.cmake)
+
+# Portal of Power support (thirdparty/skylanders-portal, shared with other Skylanders recomps).
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/skylanders-portal/CMakeLists.txt")
+    message(FATAL_ERROR "thirdparty/skylanders-portal is missing. Run: git submodule update --init --recursive")
+endif()
+add_subdirectory(thirdparty/skylanders-portal)
 
 # Recompiled code is generated from the user's own default.xex and is not in the repository.
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/generated/default/sources.cmake")
@@ -48,11 +38,8 @@ endif()
 set(GIANTSRECOMP_SOURCES
     src/main.cpp
     src/game/kernel_stubs.cpp
-    src/hooks/portal_hook.cpp
     src/hooks/ultrawide_hook.cpp
     src/localization.cpp
-    src/overlay/portal_overlay_dialog.cpp
-    src/portal/usb/usb_portal.cpp
 )
 
 if(WIN32)
@@ -94,7 +81,7 @@ endif()
 target_include_directories(giantsrecomp_verify PRIVATE "${REXSDK_DIR}/thirdparty")
 target_sources(giantsrecomp_verify PRIVATE "${REXSDK_DIR}/thirdparty/crypto/sha256.cpp")
 
-target_link_libraries(giantsrecompiled PRIVATE giantsrecomp_verify giantsrecomp_portal hidapi::hidapi)
+target_link_libraries(giantsrecompiled PRIVATE giantsrecomp_verify skylanders_portal_rex)
 target_compile_definitions(giantsrecompiled PRIVATE GIANTSRECOMP_XEX_SHA256="${GIANTSRECOMP_XEX_SHA256}")
 
 enable_testing()
@@ -115,36 +102,3 @@ add_test(NAME xex_check_cli_argv COMMAND xex_check_cli_argv_test)
 add_executable(xex_check_exit_code_test tests/xex_check_exit_code_test.cpp)
 target_include_directories(xex_check_exit_code_test PRIVATE src)
 add_test(NAME xex_check_exit_code COMMAND xex_check_exit_code_test)
-
-# --- Portal core (no ReXGlue dependency) ------------------------------------
-add_library(giantsrecomp_portal STATIC
-    src/portal/figure_catalog.cpp
-    src/portal/figure_file.cpp
-    src/portal/figure_stats.cpp
-    src/portal/portal_mode.cpp
-    src/portal/xbox_frame.cpp
-    src/portal/software/software_portal.cpp
-)
-target_include_directories(giantsrecomp_portal PUBLIC src)
-target_compile_features(giantsrecomp_portal PUBLIC cxx_std_23)
-# figure_stats.cpp decrypts figure save data (AES-128 + MD5, see its own comments) using the
-# SDK's already-vendored, standalone implementations -- same reasoning as giantsrecomp_verify's
-# vendored SHA-256 above: no ReXGlue dependency needed for either.
-if(NOT REXSDK_DIR)
-    message(FATAL_ERROR "REXSDK_DIR must be set (giantsrecomp_portal needs its vendored AES-128/MD5 implementations)")
-endif()
-target_include_directories(giantsrecomp_portal PRIVATE
-    "${REXSDK_DIR}/thirdparty/aes_128"
-    "${REXSDK_DIR}/thirdparty/libmspack/cabextract"
-)
-target_sources(giantsrecomp_portal PRIVATE
-    "${REXSDK_DIR}/thirdparty/aes_128/aes.c"
-    "${REXSDK_DIR}/thirdparty/libmspack/cabextract/md5.c"
-)
-
-foreach(portal_test portal_framing_test portal_mode_test software_portal_test figure_file_test figure_catalog_test figure_stats_test)
-    add_executable(${portal_test} tests/${portal_test}.cpp)
-    target_include_directories(${portal_test} PRIVATE tests)
-    target_link_libraries(${portal_test} PRIVATE giantsrecomp_portal)
-    add_test(NAME ${portal_test} COMMAND ${portal_test})
-endforeach()

@@ -22,8 +22,10 @@ SHA-256 check at startup (`src/xex_verify.cpp`) exists.
 
 ## Testing
 
-`src/portal/` has no dependency on ReXGlue or the game, so it's covered by plain-`main` unit tests
-under `tests/` (run with `ctest --test-dir out/build/<preset>` or `just test-debug`/`test-release`):
-figure encode/decode round-trips, the catalog scanner, the `SoftwarePortal` protocol state machine
-driven by scripted report sequences, and Xbox frame conversion. Anything needing a real game dump,
+The portal emulation (`thirdparty/skylanders-portal`) has no dependency on ReXGlue or the game, so
+it's covered by its own plain-`main` unit tests, built with this project (run with
+`ctest --test-dir out/build/<preset>` or `just test-debug`/`test-release`): figure encode/decode
+round-trips, the catalog scanner, the `SoftwarePortal` protocol state machine driven by scripted
+report sequences, and Xbox frame conversion. `tests/` holds this project's own tests (XEX
+verification). Anything needing a real game dump,
 a real figure, or real USB hardware is exercised by hand and is not part of the automated suite.

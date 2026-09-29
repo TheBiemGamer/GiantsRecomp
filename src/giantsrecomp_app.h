@@ -17,11 +17,9 @@
 #include <rex/cvar.h>
 #include <rex/logging.h>
 #include <rex/rex_app.h>
-#include <rex/ui/keybinds.h>
 
-#include "hooks/portal_hook.h"
 #include "localization.h"
-#include "overlay/portal_overlay_dialog.h"
+#include "portal_rex/portal_rex.h"
 #include "xex_verify.h"
 
 // Manual override for the ImGui overlay's size, since there's no reliable way to auto-detect "the
@@ -61,7 +59,7 @@ class GiantsrecompApp : public rex::ReXApp {
   }
 
   void OnPostSetup() override {
-    giantsrecomp::InstallConfiguredPortal(user_data_root() / "figures");
+    skylanders::InstallPortal(user_data_root() / "figures");
     // The F3 debug overlay's FPS line only shows once something calls this; nothing did, so it
     // silently stayed blank. Sampled from the SDK's dedicated guest-swap counter (which only
     // advances on an actual presented guest frame -- see CommandProcessor::guest_frame_count())
@@ -117,14 +115,7 @@ class GiantsrecompApp : public rex::ReXApp {
   }
 
   void OnCreateDialogs(rex::ui::ImGuiDrawer* drawer) override {
-    rex::ui::RegisterBind("bind_portal_overlay", "F6", "Toggle the portal figure picker",
-                          [this, drawer] {
-                            if (portal_overlay_) {
-                              portal_overlay_.reset();
-                            } else {
-                              portal_overlay_ = std::make_unique<giantsrecomp::PortalOverlayDialog>(drawer);
-                            }
-                          });
+    skylanders::RegisterPortalOverlay(drawer);
   }
 
   void OnConfigurePaths(rex::PathConfig& paths) override {
@@ -209,7 +200,6 @@ class GiantsrecompApp : public rex::ReXApp {
   }
 
   std::filesystem::path game_data_root_;
-  std::unique_ptr<giantsrecomp::PortalOverlayDialog> portal_overlay_;
   std::optional<std::chrono::steady_clock::time_point> last_frame_stats_time_;
   uint64_t last_guest_frame_count_ = 0;
   double cached_fps_ = 0.0;

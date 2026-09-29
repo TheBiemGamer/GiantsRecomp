@@ -6,7 +6,7 @@ The command set and frame layout the game and a Portal of Power exchange. See
 ## Frames
 
 Every frame, in both directions, is 32 bytes on the wire: on the Xbox 360 side that's the `0B 14`
-header plus a 30-byte payload (`src/portal/xbox_frame.h`); on the raw `PortalDevice` side (and on
+header plus a 30-byte payload (`thirdparty/skylanders-portal/src/portal/xbox_frame.h`); on the raw `PortalDevice` side (and on
 the real Wii U portal's own USB reports) it's the 32-byte payload with no header. The payload's
 first byte is the command letter; unused bytes are zero.
 

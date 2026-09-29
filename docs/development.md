@@ -83,7 +83,7 @@ With `just` installed, all of the above (both platforms) is just `just build-deb
 ## For developers
 
 - `giantsrecomp_manifest.toml` and `config/default.toml` are the project settings and the fixes needed to convert `default.xex` correctly.
-- `src/portal/` is the portal emulation (no dependency on the SDK, with unit tests in `tests/`). `src/hooks/` connects it to the game. `src/game/` holds other game-specific code.
+- `thirdparty/skylanders-portal` is the portal emulation (settings, F6 overlay, software and USB portals), included as a git submodule and shared with Trap Team Recompiled. `src/hooks/` and `src/game/` hold game-specific code.
 - `thirdparty/rexglue-sdk` is the ReXGlue SDK, included as a git submodule.
 - `docs/architecture.md` covers the repository layout and portal architecture, `docs/portal-protocol.md` the wire protocol, `docs/figures.md` the figure format and overlay, `docs/build.md` the codegen fixes and testing, `docs/reverse-engineering.md` how to identify and name functions.
 - Run the unit tests with `ctest --test-dir out/build/win-amd64-debug` (`linux-amd64-debug` on Linux), or `just test-debug`.
