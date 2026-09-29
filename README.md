@@ -91,7 +91,7 @@ The easiest way to change settings is to press **F4** in-game. Everything is sav
 | `frame_rate_limit` | Caps the FPS. `0` (the default) means no limit. |
 | `ui_scale` | Makes the F3/F4/F6/F7 overlays bigger or smaller. Try `1.5` or higher on a big or high-res monitor. Default is `1.0`. |
 | `mnk_mode` | Keyboard and mouse controller emulation. Set to `false` if you only want to use a real controller. Default is `true`. |
-| `ultrawide_ui_fix` | On a screen wider than 16:9, moves the HUD to the screen edges and keeps menus in proportion. Default is `true`. |
+| `ultrawide_hud` | On a screen wider than 16:9, moves the HUD to the screen edges and keeps menus in proportion. Default is `true`. |
 | `skip_intro` | Skips the Activision and Toys for Bob logo movies at startup. Default is `true`. |
 | `user_data_root` | Where saves, achievements, shader cache and figures go. Leave it empty to use `Documents\giantsrecomp`. |
 | `vulkan_device` | **Linux only.** Picks which GPU to use, by index. `-1` (the default) chooses automatically. |

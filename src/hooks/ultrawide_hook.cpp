@@ -29,7 +29,7 @@
 
 REXCVAR_DECLARE(std::string, resolution);
 
-REXCVAR_DEFINE_BOOL(ultrawide_ui_fix, true, "UI",
+REXCVAR_DEFINE_BOOL(ultrawide_hud, true, "Graphics",
                     "Lay out the UI/HUD for the resolution's real aspect ratio, with edge "
                     "elements at the screen edges, instead of stretching the 16:9 layout. Only "
                     "ever widens. Requires 'resolution' to be set to see the real window size.");
@@ -48,7 +48,7 @@ REX_EXTERN(__imp__BuildOrthographicProjectionMatrix);
 REX_HOOK_RAW(BuildOrthographicProjectionMatrix) {
   int32_t width = 0;
   int32_t height = 0;
-  if (REXCVAR_GET(ultrawide_ui_fix) && uint32_t(ctx.lr) == 0x8219118C &&
+  if (REXCVAR_GET(ultrawide_hud) && uint32_t(ctx.lr) == 0x8219118C &&
       rex::graphics::video_mode_util::TryParseResolutionPreset(REXCVAR_GET(resolution), width,
                                                                 height) &&
       width > 0 && height > 0) {

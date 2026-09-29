@@ -12,11 +12,11 @@ resolution_scale = 2                      # 1-8 supersample multiplier, 1 = off
 frame_rate_limit = 60                     # 0 = unlimited
 gpu_allow_invalid_fetch_constants = true  # works around a GPU quirk, on by default
 ultrawide_fov = true                      # widen camera FOV to match resolution's aspect ratio
+ultrawide_hud = true                      # lay out the HUD and menus for the real screen width
 # vulkan_device = -1                      # GPU index for multi-GPU systems, -1 = auto-pick
 
 ["UI"]
 # ui_scale = 1.5                          # ImGui overlay font/widget scale
-ultrawide_ui_fix = true                   # lay out the HUD and menus for the real screen width
 
 ["UI/Presenter"]
 present_use_actual_aspect = true          # present the real rendered frame at 'resolution's real
