@@ -67,6 +67,13 @@ class GiantsrecompApp : public rex::ReXApp {
     // the host's presentation rate, which is a different clock than the guest's and would have
     // reported host FPS mislabeled as "Guest".
     SetGuestFrameStats([this] { return ComputeFrameStats(); });
+    // Default to 16x anisotropic filtering (the SDK defaults to 4x): ground and floor textures seen
+    // at a shallow angle stay sharp, for a negligible cost on PC GPUs. Only when the user hasn't set
+    // it themselves.
+    if (!rex::cvar::HasNonDefaultValue("anisotropic_override") &&
+        !rex::cvar::SetFlagByName("anisotropic_override", "5")) {
+      REXLOG_WARN("Could not set anisotropic_override to 16x");
+    }
   }
 
   void OnConfigureFonts(ImFontAtlas* atlas) override {

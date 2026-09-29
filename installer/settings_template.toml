@@ -13,6 +13,9 @@ frame_rate_limit = 60                     # 0 = unlimited
 gpu_allow_invalid_fetch_constants = true  # works around a GPU quirk, on by default
 # vulkan_device = -1                      # GPU index for multi-GPU systems, -1 = auto-pick
 
+["GPU"]
+anisotropic_override = 5                  # texture filtering: 5 = 16x, 3 = 4x, 0 = off
+
 ["UI"]
 # ui_scale = 1.5                          # ImGui overlay font/widget scale
 
