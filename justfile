@@ -12,8 +12,10 @@
 
 set windows-shell := ["C:/Program Files/Git/usr/bin/sh.exe", "-cu"]
 
+# On Windows, `just` is a native program, so it always sees PATH in Windows form (';'-separated),
+# even when started from Git Bash; append in the same form, and sh.exe converts the whole value.
 export PATH := if os() == "windows" {
-    env_var('PATH') + ":/c/Program Files/Git/usr/bin:/c/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/Llvm/x64/bin"
+    env_var('PATH') + ";C:\\Program Files\\Git\\usr\\bin;C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\Llvm\\x64\\bin"
 } else {
     env_var('PATH')
 }
