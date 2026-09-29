@@ -4,3 +4,6 @@
 [submodule "thirdparty/hidapi"]
 	path = thirdparty/hidapi
 	url = https://github.com/libusb/hidapi.git
+[submodule "thirdparty/skylanders-portal"]
+	path = thirdparty/skylanders-portal
+	url = https://github.com/TheBiemGamer/skylanders-portal.git
