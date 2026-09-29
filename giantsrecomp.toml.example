@@ -16,6 +16,8 @@ ultrawide_fov = true                      # widen camera FOV to match resolution
 
 ["UI"]
 # ui_scale = 1.5                          # ImGui overlay font/widget scale
+ultrawide_ui_fix = false                  # scale the in-game UI/HUD uniformly to resolution's
+                                          # real aspect instead (broken)
 
 ["UI/Presenter"]
 present_use_actual_aspect = true          # present the real rendered frame at 'resolution's real
