@@ -28,7 +28,7 @@
 
 REXCVAR_DECLARE(std::string, resolution);
 
-REXCVAR_DEFINE_BOOL(ultrawide_ui_fix, true, "UI",
+REXCVAR_DEFINE_BOOL(ultrawide_ui_fix, false, "UI",
                     "Widen the UI/HUD's 2D screen-space projection to match the configured "
                     "resolution's real aspect ratio, so it scales up uniformly instead of "
                     "stretching non-uniformly. Only ever widens. Requires 'resolution' to be "
