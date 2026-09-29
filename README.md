@@ -17,7 +17,7 @@ This is a solo, for-fun project to see whether a static recompilation of Skyland
 **Works today**
 - The game starts, renders, plays sound, and plays through Story mode with a controller.
 - A virtual Portal of Power with your own figures on it, up to 16 at once (matching the real portal's slots).
-- A real, physical Portal of Power over USB (`portal_mode = "usb"`) — tested with a Wii U Traptanium portal, including figure recognition (confirmed with a real Skylander).
+- A real, physical Portal of Power over USB (`portal_mode = "usb"`) — tested with a Wii U Traptanium portal, including figure recognition (confirmed with a real Skylander). With a real portal connected, the **F6** menu shows each figure on it (name, level, gold, nickname) and has a **Dump to file** button that saves a copy of that figure to your figures folder, sorted into a subfolder per game. You can then use that dump on the virtual portal without the toy. Dumping only reads the figure: the physical toy isn't changed. The game briefly sees the figure as removed and placed back while the dump runs.
 - Keyboard/mouse controller emulation (`mnk_mode`) see [Keybinds](#keybinds).
 - Ultrawide monitors: set `resolution` to your monitor's resolution (e.g. `"3440x1440"`) and the game renders the full width with a correctly widened field of view, with no black bars. The HUD and menus are still stretched to fit the wider screen; a fix is being investigated.
 
@@ -93,7 +93,7 @@ These work regardless of input device:
 | --- | --- |
 | **F3** | FPS / frame time overlay |
 | **F4** | Settings overlay — edit `giantsrecomp.toml` live |
-| **F6** | Virtual Portal of Power figure picker |
+| **F6** | Portal of Power menu — virtual portal figure picker, or real portal status and figure dumping |
 | **F7** | Achievements overlay |
 
 ### Keyboard/mouse controller emulation
