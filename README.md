@@ -19,6 +19,7 @@ This is a solo, for-fun project to see whether a static recompilation of Skyland
 - A virtual Portal of Power with your own figures on it, up to 16 at once (matching the real portal's slots).
 - A real, physical Portal of Power over USB (`portal_mode = "usb"`) — tested with a Wii U Traptanium portal, including figure recognition (confirmed with a real Skylander).
 - Keyboard/mouse controller emulation (`mnk_mode`) see [Keybinds](#keybinds).
+- Ultrawide monitors: set `resolution` to your monitor's resolution (e.g. `"3440x1440"`) and the game renders the full width with a correctly widened field of view, with no black bars. The HUD and menus are still stretched to fit the wider screen; a fix is being investigated.
 
 **Not yet**
 - It can be slow, especially in the Debug build (see [Playing](#playing) for the faster Release build). Expect stutter the first time an effect appears in a scene; it should be smoother the second time. Cutscenes are the heaviest part and lag the most.
@@ -60,23 +61,29 @@ That's it if `rom\default.xex` exists — no flags needed for the common case.
 
 ### Settings file
 
-Copy [`giantsrecomp.toml.example`](giantsrecomp.toml.example) next to `giantsrecompiled.exe` and rename it to `giantsrecomp.toml` to change any of the following without typing flags every time (the in-game **Settings** overlay, **F4**, reads and writes this same file):
+Your settings live in a file called `giantsrecomp.toml`, in the same folder as `giantsrecompiled.exe`. The easiest way to change them is in-game: press **F4** to open the Settings overlay, which reads and writes this file for you.
+
+
+Where to find it:
+
+- **Installed with `GiantsRecompSetup.exe`:** the installer already created it in `%LOCALAPPDATA%\Programs\Giants Recompiled` 
+- **Built from source:** the build creates it in your build folder (e.g. `out\build\win-amd64-release`) the first time, as a copy of [`giantsrecomp.toml.example`](giantsrecomp.toml.example). It never overwrites a file that's already there.
+
+The settings you're most likely to want:
 
 - `portal_mode`: `"software"` (default) uses the virtual portal; `"usb"` uses a real, physically connected Portal of Power (tested with a Wii U Traptanium portal) — just plug it in, no driver changes needed; `"none"` disables the portal.
-- `portal_figures_dir`: the folder the in-game figure picker searches and creates new figures in. Press **F6** to open it (mouse only for now): browse your dumps, or create a new figure by name, grouped by game and release order. Leave empty (the default) to use a `figures` folder next to your saves.
-- `portal_figure`: puts one of your own figure dumps on the portal at startup (slot 0). **The game's changes to the figure are saved back to this exact file as you play**, the same as a real portal would. Use a copy if you want to keep the original untouched.
+
 - `gpu_allow_invalid_fetch_constants`: works around a GPU quirk that can otherwise make parts of the scene, or the whole screen, render blank. Recommended until the underlying cause is fixed.
 - `user_data_root`: where saves, achievements, shader cache, and the default figures folder live. Leave empty (the default) to use `Documents\giantsrecomp`.
 - `frame_rate_limit`: caps the host frame rate to this many FPS. `0` (the default) is unlimited.
 - `resolution_scale`: supersamples the internal render resolution by this factor (`1`-`8`) before downscaling to your window/monitor — sharper, at a real GPU cost. `1` (the default) is no scaling.
-- `resolution`: sets the startup window size, e.g. `"3440x1440"` for an ultrawide monitor or `"4k"`. The window and internal render resolution use this size in full. Giants itself only ever ran at 16:9 or 4:3 on real Xbox 360 hardware, so anything else is pillarboxed/letterboxed to the nearest of those (matching real console output) rather than stretched — full ultrawide/wide-FOV gameplay is planned but not implemented yet.
+- `resolution`: sets the startup window size, e.g. `"3440x1440"` for an ultrawide monitor or `"4k"`.
 - `ui_scale`: scales the ImGui overlays (**F3**/**F4**/**F6**/**F7**, console) font size and widget sizing. `1.0` (the default) is unchanged; try `1.5` or higher if the overlay text looks too small on a large or high-resolution monitor.
-- `vulkan_device`: picks which GPU renders the game by index, for a PC with more than one (e.g. a laptop with both an integrated and a discrete GPU). `-1` (the default) auto-selects, but the auto-pick has no preference for the discrete GPU — if performance is much worse than expected, run the game once, check the log for "Available Vulkan physical devices" and the index list it prints, and set this to the discrete one's index.
+- `vulkan_device`: only for linux - picks which GPU renders the game by index, for a PC with more than one (e.g. a laptop with both an integrated and a discrete GPU). `-1` (the default) auto-selects.
 - `mnk_mode`: enables keyboard/mouse controller emulation. `true` (the default) turns it on; set to `false` to require a real controller. See [Keybinds](#keybinds) for the default key mapping.
 
 Any setting can still be passed as a command-line flag instead (`--portal_mode software`), which overrides whatever the settings file has. One exception: `--game_data_root` (where `rom\` lives) can't be set from the settings file — it's read before the file loads — but it already defaults to `rom` next to the executable, so you only need the flag if your dump lives somewhere else.
 
-`--portal_test_figure` (command line only, for development) puts an all-zero test figure on the portal; the game reports it as a problem toy.
 
 ## Keybinds
 
