@@ -25,58 +25,49 @@
 #include <rex/cvar.h>
 #include <rex/graphics/video_mode_util.h>
 #include <rex/hook.h>
+#include <rex/memory/utils.h>
 
 REXCVAR_DECLARE(std::string, resolution);
 
-REXCVAR_DEFINE_BOOL(ultrawide_ui_fix, false, "UI",
-                    "Widen the UI/HUD's 2D screen-space projection to match the configured "
-                    "resolution's real aspect ratio, so it scales up uniformly instead of "
-                    "stretching non-uniformly. Only ever widens. Requires 'resolution' to be "
-                    "set to see the real window size.");
+REXCVAR_DEFINE_BOOL(ultrawide_ui_fix, true, "UI",
+                    "Lay out the UI/HUD for the resolution's real aspect ratio, with edge "
+                    "elements at the screen edges, instead of stretching the 16:9 layout. Only "
+                    "ever widens. Requires 'resolution' to be set to see the real window size.");
 
-// The UI/HUD system builds its 2D screen-space projection through the same low-level
-// BuildOrthographicProjectionMatrix (0x822D0100, adjacent to BuildPerspectiveProjectionMatrix,
-// same 7-arg signature, textbook off-center orthographic math -- see config/default.toml's
-// comment above that entry). Its caller (0x821910A8, a UI-camera-refresh method reached via
-// vtable dispatch, discovered while hooking this) always passes left=0, top=0, right=1280,
-// bottom=720 -- confirmed live via a temporary diagnostic hook (ORTHO DIAG log), not guessed:
-// a hardcoded 1280x720 reference canvas, completely independent of the real window size. That
-// fixed canvas gets mapped onto the real (wider) render target, which is the whole stretch bug.
-//
-// Fix: same Hor+ technique as the camera, applied to this matrix's left/right bounds when they
-// match that exact origin-anchored screen-space shape (left==0, top==0 -- guards against
-// mis-firing on some other orthographic use of this shared low-level builder, e.g. a shadow map,
-// which wouldn't have this signature). Widening left/right proportionally to the real aspect
-// makes the horizontal and vertical stretch factors equal, so the UI scales up uniformly instead
-// of being non-uniformly warped -- fixes the visible distortion. It does NOT make the UI native-
-// sized with the 3D background showing through the margins (the UI still spans the full window,
-// just without distortion); that would need a second, separate fix constraining the actual GPU
-// viewport rectangle the UI draws into, not yet found.
+// The UI camera refresh (0x821910A8, reached via vtable) builds the UI's 2D projection through
+// BuildOrthographicProjectionMatrix (0x822D0100) with left=0, top=0 and right/bottom taken from a
+// screen object, [[ctx + 20] + 236] with width at +180 and height at +184 (1280x720), where ctx is
+// still in r28 at the call. It also caches the width as an int at camera + 112. The UI layout
+// aligns elements (left, center, right) to that same screen width, so widening it to
+// height * aspect, and the canvas with it, makes the game put edge-anchored elements at the real
+// screen edges and keep centered ones centered, instead of stretching everything. The guest frame
+// is still 1280 wide; the presenter's horizontal stretch then brings it back to the right
+// proportions. Only the call from that one site (lr 0x8219118C) is touched, so render-target and
+// other orthographic uses of the shared builder are left alone.
 REX_EXTERN(__imp__BuildOrthographicProjectionMatrix);
 REX_HOOK_RAW(BuildOrthographicProjectionMatrix) {
-  if (REXCVAR_GET(ultrawide_ui_fix)) {
-    int32_t width = 0;
-    int32_t height = 0;
-    if (rex::graphics::video_mode_util::TryParseResolutionPreset(REXCVAR_GET(resolution), width,
-                                                                  height) &&
-        width > 0 && height > 0) {
-      const double left = ctx.f1.f64;
-      const double right = ctx.f2.f64;
-      const double bottom = ctx.f3.f64;
-      const double top = ctx.f4.f64;
-
-      // Only the observed origin-anchored screen-space UI shape (left==0, top==0). Leaves any
-      // other orthographic use of this shared builder untouched.
-      if (left == 0.0 && top == 0.0 && right > 0.0 && bottom > 0.0) {
-        const double real_aspect = double(width) / double(height);
-        const double new_right = bottom * real_aspect;
-        if (new_right > right) {  // only widen, never narrow
-          const double center_x = right * 0.5;
-          const double new_half_width = new_right * 0.5;
-          ctx.f1.f64 = center_x - new_half_width;
-          ctx.f2.f64 = center_x + new_half_width;
-        }
+  int32_t width = 0;
+  int32_t height = 0;
+  if (REXCVAR_GET(ultrawide_ui_fix) && uint32_t(ctx.lr) == 0x8219118C &&
+      rex::graphics::video_mode_util::TryParseResolutionPreset(REXCVAR_GET(resolution), width,
+                                                                height) &&
+      width > 0 && height > 0) {
+    using rex::memory::load_and_swap;
+    const double aspect = double(width) / double(height);
+    const uint32_t owner = load_and_swap<uint32_t>(base + ctx.r28.u32 + 20);
+    const uint32_t screen = owner ? load_and_swap<uint32_t>(base + owner + 236) : 0;
+    if (screen) {
+      const float screen_width = load_and_swap<float>(base + screen + 180);
+      const float screen_height = load_and_swap<float>(base + screen + 184);
+      const float wide = float(screen_height * aspect);
+      if (screen_height > 0.0f && wide > screen_width) {  // only ever widens
+        rex::memory::store_and_swap<float>(base + screen + 180, wide);
       }
+    }
+    const double wide_right = ctx.f3.f64 * aspect;
+    if (ctx.f1.f64 == 0.0 && wide_right > ctx.f2.f64) {
+      ctx.f2.f64 = wide_right;
+      rex::memory::store_and_swap<int32_t>(base + ctx.r29.u32 + 112, int32_t(wide_right));
     }
   }
 
