@@ -18,10 +18,11 @@ This is a solo, for-fun project to see whether a static recompilation of Skyland
 - The game starts, renders, plays sound, and plays through Story mode with a controller.
 - A virtual Portal of Power with your own figures on it, up to 16 at once (matching the real portal's slots).
 - A real, physical Portal of Power over USB (`portal_mode = "usb"`) — tested with a Wii U Traptanium portal, including figure recognition (confirmed with a real Skylander).
+- Keyboard/mouse controller emulation (`mnk_mode`) see [Keybinds](#keybinds).
 
 **Not yet**
 - It can be slow, especially in the Debug build (see [Playing](#playing) for the faster Release build). Expect stutter the first time an effect appears in a scene; it should be smoother the second time. Cutscenes are the heaviest part and lag the most.
-- Keyboard/mouse controller emulation exists (`mnk_mode`, on by default) and is playable, but is much less tested than a real controller — see [Keybinds](#keybinds).
+
 - Modes other than Story have not been tested.
 - **Linux builds and runs** (see [Setup](docs/development.md#setup)), but it's newer and rougher than the Windows build: it's noticeably slower than Windows even on the same hardware, and there's an unresolved rendering bug where the screen renders with an incorrect red tint from the title screen onward. On a laptop with both an integrated and a discrete GPU, also check the `vulkan_device` tip in [Settings file](#settings-file) — the automatic GPU pick has no preference for the discrete GPU and can end up on the weaker one. macOS has build presets but hasn't been tried by anyone.
 
@@ -29,7 +30,7 @@ This is a solo, for-fun project to see whether a static recompilation of Skyland
 
 1. **A 64-bit PC.** Windows 10 or 11 with a graphics card that supports DirectX 12 is the main target. Linux works too (see [Setup](docs/development.md#setup)) with a Vulkan 1.x capable GPU, but is newer and rougher.
 2. **Your own copy of the game:** the Xbox 360 disc of Skylanders: Giants, **version 1.0 (the USA and Europe release)**, extracted to a folder on your PC (for example with a disc-extraction tool such as `extract-xiso` or `xdvdfs`) — or just the ISO file, if you're using the installer below. The program checks the game file against a fingerprint at startup and refuses to run any other version.
-3. **A controller.** An Xbox controller works.
+
 4. **Build tools**, but only if building from source (see [Development](docs/development.md)) rather than using the installer below: on Windows, Visual Studio 2022 with the C++ tools, CMake, Ninja and Git. On Linux, clang 20+, CMake, Ninja and Git.
 
 ## Installing
@@ -113,8 +114,6 @@ list means either key works.
 | Start | `X` or `Return` |
 | Guide | unbound |
 
-The mouse doesn't drive the right stick by default — set `mnk_mouse = true` to use it instead of the
-right-stick keys, and `mnk_sensitivity` to adjust how fast it turns.
 
 ## AI usage
 
@@ -129,10 +128,12 @@ This project stands on other people's work.
 - **[DimensionsRecomp](https://github.com/NeverCookFirst/DimensionsRecomp)** by NeverCookFirst was the inspiration for this project, and I looked at its code and approach. It brought LEGO Dimensions to PC with a virtual toy pad and real-portal support, built on ReXGlue, and this project follows the same idea for Skylanders.
 - **[ReXGlue SDK](https://github.com/rexglue/rexglue-sdk)** by Tom Clay is the recompiler and runtime everything here is built on. It derives from the [Xenia](https://xenia.jp) Xbox 360 emulator (Ben Vanik and the Xenia contributors) and is inspired by [XenonRecomp](https://github.com/hedge-dev/XenonRecomp) by hedge-dev. It is included unmodified as a submodule and keeps its own license (see `thirdparty/rexglue-sdk/LICENSE`).
 - **[Cemu](https://github.com/cemu-project/Cemu)** and **[RPCS3](https://github.com/RPCS3/rpcs3)** already emulate the Skylanders Portal of Power. I read how they handle it to learn how the portal works: the commands, the Xbox 360 message format, and the layout of a figure. No code was copied from them. Each project has its own license.
-- Everyone who documented the Portal of Power and its figures and made dumping tools that let people keep their own figures.
+
 - **[Skylanders Ultimate NFC Pack V15](https://skylandersnfc.github.io/Skylanders-Ultimate-NFC-Pack/)** is the source of the figure dumps used to build the game's built-in Skylander name/id catalog, used for the in-game figure creator and picker.
-- Figure save-data decoding (level, gold, nickname) is built on public reverse-engineering of the Skylanders NFC format: **[SkyReader](https://github.com/reedstrm/SkyReader)** and Marijn Kneppers' **["Reverse engineering Skylanders' Toys-to-life mechanics"](https://marijnkneppers.dev/posts/reverse-engineering-skylanders-toys-to-life-mechanics/)**. 
 - **[extract-xiso](https://github.com/XboxDev/extract-xiso)** is vendored (prebuilt, unmodified) in `installer/` to unpack an Xbox 360 ISO during installation. It keeps its own license (`installer/extract-xiso.LICENSE.txt`).
+- Figure save-data decoding (level, gold, nickname) is built on public reverse-engineering of the Skylanders NFC format: **[SkyReader](https://github.com/reedstrm/SkyReader)** and Marijn Kneppers' **["Reverse engineering Skylanders' Toys-to-life mechanics"](https://marijnkneppers.dev/posts/reverse-engineering-skylanders-toys-to-life-mechanics/)**. 
+
+- Everyone who documented the Portal of Power and its figures and made dumping tools that let people keep their own figures.
 
 ## License and legal
 
