@@ -16,8 +16,7 @@ ultrawide_fov = true                      # widen camera FOV to match resolution
 
 ["UI"]
 # ui_scale = 1.5                          # ImGui overlay font/widget scale
-ultrawide_ui_fix = false                  # scale the in-game UI/HUD uniformly to resolution's
-                                          # real aspect instead (broken)
+ultrawide_ui_fix = true                   # lay out the HUD and menus for the real screen width
 
 ["UI/Presenter"]
 present_use_actual_aspect = true          # present the real rendered frame at 'resolution's real
@@ -26,6 +25,9 @@ present_use_actual_aspect = true          # present the real rendered frame at '
 
 ["Input"]
 mnk_mode = true                           # enable keyboard/mouse controller emulation
+
+["Game"]
+skip_intro = true                         # skip the Activision and Toys for Bob logo movies
 
 ["Runtime"]
 # user_data_root = "C:\\path\\to\\folder" # empty = Documents\giantsrecomp

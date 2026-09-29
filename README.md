@@ -91,6 +91,8 @@ The easiest way to change settings is to press **F4** in-game. Everything is sav
 | `frame_rate_limit` | Caps the FPS. `0` (the default) means no limit. |
 | `ui_scale` | Makes the F3/F4/F6/F7 overlays bigger or smaller. Try `1.5` or higher on a big or high-res monitor. Default is `1.0`. |
 | `mnk_mode` | Keyboard and mouse controller emulation. Set to `false` if you only want to use a real controller. Default is `true`. |
+| `ultrawide_ui_fix` | On a screen wider than 16:9, moves the HUD to the screen edges and keeps menus in proportion. Default is `true`. |
+| `skip_intro` | Skips the Activision and Toys for Bob logo movies at startup. Default is `true`. |
 | `user_data_root` | Where saves, achievements, shader cache and figures go. Leave it empty to use `Documents\giantsrecomp`. |
 | `vulkan_device` | **Linux only.** Picks which GPU to use, by index. `-1` (the default) chooses automatically. |
 
@@ -106,7 +108,7 @@ You can also pass any setting as a command-line flag (like `--portal_mode softwa
 | Parts of the screen, or all of it, are blank | Set `gpu_allow_invalid_fetch_constants = true`. |
 | Overlay text is too small | Raise `ui_scale` in the F4 menu. |
 | It's slow or stuttery | Use the **Release** build. Some stutter the first time an effect shows up is normal and gets better the second time. Cutscenes are the heaviest part. |
-| Ultrawide: the HUD and menus look stretched | Set `resolution` to your monitor's resolution so the game fills the whole screen. The HUD and menus still stretch, and I'm looking into a fix. |
+| Ultrawide: the picture or HUD looks stretched | Set `resolution` to your monitor's resolution, since that's what the ultrawide fixes use. Cutscene movies still stretch for now. |
 | Linux: the screen has a red tint | Known bug, and it isn't fixed yet. It shows up from the title screen onward. |
 | Linux laptop: it runs slowly | The automatic GPU pick can land on the integrated GPU. Set `vulkan_device` to your discrete GPU's index. |
 
@@ -119,7 +121,8 @@ You can also pass any setting as a command-line flag (like `--portal_mode softwa
 - Virtual portal with up to 16 figures, and a real USB portal
 - Dumping your own figures
 - Keyboard and mouse controls
-- Ultrawide resolutions
+- Ultrawide resolutions, with a wider camera and the HUD at the screen edges
+- Skipping the startup logo movies
 
 **Not there yet**
 - It can be slow, especially in the Debug build

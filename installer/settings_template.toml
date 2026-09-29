@@ -19,5 +19,8 @@ gpu_allow_invalid_fetch_constants = true  # works around a GPU quirk, on by defa
 ["Input"]
 mnk_mode = true                           # enable keyboard/mouse controller emulation
 
+["Game"]
+skip_intro = true                         # skip the Activision and Toys for Bob logo movies
+
 ["Runtime"]
 # user_data_root = "C:\\path\\to\\folder" # empty = Documents\giantsrecomp

@@ -138,3 +138,10 @@ labels = [0x82169400, 0x82169410, 0x82169598, 0x82169720, 0x821698A8, 0x82169A30
 # perspective version). This is almost certainly what the 2D/UI system uses for screen-space
 # projection, separate from the 3D camera's perspective matrix.
 0x822D0100 = { name = "BuildOrthographicProjectionMatrix" }
+# 0x82153DB0 is in BinkOpen (sub_82153BE8), right after it reads the 44-byte Bink 2 header into
+# r1+96 and just before it checks the signature (the "KB2e" compare that follows). Both the file
+# and in-memory header paths branch here. src/hooks/intro_skip_hook.cpp cuts the logo movies.
+[[midasm_hook]]
+address = 0x82153DB0
+name = "BinkHeaderLoaded"
+registers = ["r1"]
